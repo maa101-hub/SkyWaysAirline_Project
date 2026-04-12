@@ -1,0 +1,359 @@
+/* ── SignUp.css ── */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+:root {
+  --navy: #0a0f2c;
+  --card: #141b3a;
+  --sky: #4fa3e3;
+  --sky-light: #7ec8f7;
+  --accent: #f0a500;
+  --text: #e8eaf6;
+  --muted: #7b84b0;
+  --border: rgba(79, 163, 227, 0.18);
+  --input-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Background ── */
+.auth-bg {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--navy);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 100px 16px 48px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.auth-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 10%, rgba(79, 163, 227, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 80% 90%, rgba(240, 165, 0, 0.08) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.stars {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1px 1px at 15% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 10%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 65% 35%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 75%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 60%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 10% 50%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 90% 45%, rgba(255,255,255,0.4) 0%, transparent 100%);
+}
+
+/* ── Nav ── */
+.auth-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 40px;
+  background: rgba(10, 15, 44, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.5rem;
+  color: var(--sky-light);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+.logo span { color: var(--accent); }
+
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.nav-text {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.nav-cta {
+  background: transparent;
+  border: 1.5px solid var(--sky);
+  color: var(--sky-light);
+  padding: 7px 20px;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+.nav-cta:hover {
+  background: var(--sky);
+  color: var(--navy);
+}
+
+/* ── Wrapper ── */
+.auth-wrapper {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 540px;
+  animation: fadeUp 0.5s ease both;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Card ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 42px 40px 38px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.card-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.card-icon {
+  width: 56px;
+  height: 56px;
+  background: linear-gradient(135deg, var(--sky), #1a6fa8);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+  font-size: 1.5rem;
+}
+
+.card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  color: var(--text);
+}
+
+.card-sub {
+  margin-top: 8px;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── Section label ── */
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--sky);
+  border-left: 3px solid var(--sky);
+  padding-left: 8px;
+  margin: 22px 0 14px;
+}
+
+/* ── Form row ── */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* ── Fields ── */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.field label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.field input,
+.field select,
+.field textarea {
+  background: var(--input-bg);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: var(--text);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(123, 132, 176, 0.55);
+}
+
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+  border-color: var(--sky);
+  background: rgba(79, 163, 227, 0.06);
+}
+
+.field select option {
+  background: var(--card);
+  color: var(--text);
+}
+
+.field textarea {
+  resize: none;
+  height: 76px;
+}
+
+/* ── Email tip ── */
+.tip {
+  font-size: 0.75rem;
+  color: var(--sky);
+  background: rgba(79, 163, 227, 0.1);
+  border: 1px solid rgba(79, 163, 227, 0.25);
+  border-radius: 8px;
+  padding: 7px 11px;
+  margin-top: 2px;
+}
+
+/* ── Password wrapper ── */
+.pw-wrap {
+  position: relative;
+}
+.pw-wrap input {
+  padding-right: 56px;
+}
+.toggle-pw {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-family: 'DM Sans', sans-serif;
+  transition: color 0.2s;
+}
+.toggle-pw:hover { color: var(--sky); }
+
+/* ── Password hints ── */
+.pw-hints {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  margin-top: 8px;
+}
+
+.hint {
+  font-size: 0.73rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.hint::before {
+  content: '●';
+  font-size: 0.45rem;
+  color: var(--muted);
+}
+.hint.ok { color: #4caf7d; }
+.hint.ok::before { color: #4caf7d; }
+
+/* ── Button ── */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--sky) 0%, #1a6fa8 100%);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 24px;
+  letter-spacing: 0.3px;
+  transition: opacity 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  animation: shine 2.5s infinite;
+}
+@keyframes shine {
+  0% { left: -100%; }
+  40%, 100% { left: 150%; }
+}
+
+/* ── Divider ── */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+/* ── Footer note ── */
+.footer-note {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.footer-note a {
+  color: var(--sky-light);
+  text-decoration: none;
+  font-weight: 500;
+}
+.footer-note a:hover { text-decoration: underline; }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .card { padding: 28px 18px; }
+  .auth-nav { padding: 14px 20px; }
+  .form-row { grid-template-columns: 1fr; }
+  .nav-text { display: none; }
+}
+
+.required {
+  color: red;
+  margin-left: 4px;
+}
+.error {
+  color: red;
+  font-size: 12px;
+  margin-top: 4px;
+}
