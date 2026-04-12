@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef } from "react";
 import "./Dashboard.css";
 import { useNavigate } from "react-router-dom";
-import API from "../../api";
+// import API from "../../api";
+//RK
+//import { getUsers } from "../../api.jsx";
+import { API, flightAPI, getUsers,deleteUser } from "../../api";
+
 
 // ── Blank forms ───────────────────────────────────────────────
 const blankFlight   = { flightId:"", flightName:"", seatingCapacity:"", reservationCapacity:"" };
@@ -28,7 +32,6 @@ const MOCK_REVENUE_MONTHLY = [420000, 510000, 380000, 620000, 590000, 710000];
 export default function Dashboard() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("overview");
-
   // ── Existing state (unchanged) ────────────────────────────
   const [flights,   setFlights]   = useState([]);
   const [routes,    setRoutes]    = useState([]);
@@ -50,7 +53,7 @@ export default function Dashboard() {
   const [scheduleDel, setScheduleDel]     = useState(null);
 
   // ── NEW state ─────────────────────────────────────────────
-  const [users, setUsers]                   = useState(MOCK_USERS);
+  const [users, setUsers]                   = useState([]);
   const [deleteRequests, setDeleteRequests] = useState(MOCK_DELETE_REQUESTS);
   const [notifOpen, setNotifOpen]           = useState(false);
   const [userDelConfirm, setUserDelConfirm] = useState(null); // { userId, name, fromRequest }
@@ -59,22 +62,37 @@ export default function Dashboard() {
 
   // ── Existing API calls (unchanged) ───────────────────────
   useEffect(() => {
-    API.get("/api/flights")
+    flightAPI.get("/api/flights")
       .then(res => setFlights(res.data.data))
       .catch(err => console.error(err));
   }, []);
 
   useEffect(() => {
-    API.get("/api/routes")
+    flightAPI.get("/api/routes")
       .then(res => setRoutes(res.data.data))
       .catch(err => console.error(err));
   }, []);
 
   useEffect(() => {
-    API.get("/api/schedules")
+    flightAPI.get("/api/schedules")
       .then(res => setSchedules(res.data.data))
       .catch(err => console.error(err));
   }, []);
+
+  //RK
+  useEffect(() => {
+  fetchUsers();
+}, []);
+
+const fetchUsers = async () => {
+  try {
+    const res = await getUsers();
+    console.log("Users from backend:", res.data);
+    setUsers(res.data);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+  }
+};
 
   // Close notif panel on outside click
   useEffect(() => {
@@ -98,9 +116,9 @@ export default function Dashboard() {
     const { flightId, flightName, seatingCapacity } = flightForm;
     if (!flightId || !flightName || !seatingCapacity) { alert("Fill all required fields."); return; }
     try {
-      if (flightEdit) await API.put(`/api/flights/${flightEdit}`, flightForm);
-      else            await API.post("/api/flights", flightForm);
-      const res = await API.get("/api/flights");
+      if (flightEdit) await flightAPI.put(`/api/flights/${flightEdit}`, flightForm);
+      else            await flightAPI.post("/api/flights", flightForm);
+      const res = await flightAPI.get("/api/flights");
       setFlights(res.data.data);
       setFlightModal(false);
     } catch (err) { console.error(err); alert("Error saving flight"); }
@@ -108,7 +126,7 @@ export default function Dashboard() {
   const editFlight = (f) => { setFlightForm({ ...f }); setFlightEdit(f.flightId); setFlightModal(true); };
   const deleteFlight = async () => {
     try {
-      await API.delete(`/api/flights/${flightDel}`);
+      await flightAPI.delete(`/api/flights/${flightDel}`);
       setFlights(flights.filter(f => f.flightId !== flightDel));
       setFlightDel(null);
     } catch (err) { console.error(err); }
@@ -116,9 +134,9 @@ export default function Dashboard() {
 
   const saveRoute = async () => {
     try {
-      if (routeEdit) await API.put(`/api/routes/${routeEdit}`, routeForm);
-      else           await API.post("/api/routes", routeForm);
-      const res = await API.get("/api/routes");
+      if (routeEdit) await flightAPI.put(`/api/routes/${routeEdit}`, routeForm);
+      else           await flightAPI.post("/api/routes", routeForm);
+      const res = await flightAPI.get("/api/routes");
       setRoutes(res.data.data);
       setRouteModal(false);
     } catch (err) { console.error(err); }
@@ -126,7 +144,7 @@ export default function Dashboard() {
   const editRoute = (r) => { setRouteForm({ ...r }); setRouteEdit(r.routeId); setRouteModal(true); };
   const deleteRoute = async () => {
     try {
-      await API.delete(`/api/routes/${routeDel}`);
+      await flightAPI.delete(`/api/routes/${routeDel}`);
       setRoutes(routes.filter(r => r.routeId !== routeDel));
       setRouteDel(null);
     } catch (err) { console.error(err); }
@@ -143,9 +161,9 @@ export default function Dashboard() {
       alert("Fill all required fields."); return;
     }
     try {
-      if (scheduleEdit) await API.put(`/api/schedules/${scheduleEdit}`, scheduleForm);
-      else              await API.post("/api/schedules", scheduleForm);
-      const res = await API.get("/api/schedules");
+      if (scheduleEdit) await flightAPI.put(`/api/schedules/${scheduleEdit}`, scheduleForm);
+      else              await flightAPI.post("/api/schedules", scheduleForm);
+      const res = await flightAPI.get("/api/schedules");
       setSchedules(res.data.data);
       setScheduleModal(false);
     } catch (err) { console.error(err); }
@@ -153,7 +171,7 @@ export default function Dashboard() {
   const editSchedule = (s) => { setScheduleForm({ ...s }); setScheduleEdit(s.scheduleId); setScheduleModal(true); };
   const deleteSchedule = async () => {
     try {
-      await API.delete(`/api/schedules/${scheduleDel}`);
+      await flightAPI.delete(`/api/schedules/${scheduleDel}`);
       setSchedules(schedules.filter(s => s.scheduleId !== scheduleDel));
       setScheduleDel(null);
     } catch (err) { console.error(err); }
@@ -165,17 +183,20 @@ export default function Dashboard() {
   };
 
   const executeDeleteUser = async () => {
-    const { userId, fromRequest } = userDelConfirm;
-    try {
-      // await API.delete(`/api/users/${userId}`);   ← uncomment when API ready
-      setUsers(users.filter(u => u.userId !== userId));
-      if (fromRequest) {
-        setDeleteRequests(deleteRequests.filter(r => r.userId !== userId));
-        setNotifOpen(false);
-      }
-      setUserDelConfirm(null);
-    } catch (err) { console.error(err); }
-  };
+  const { userId, fromRequest } = userDelConfirm;
+  try {
+    await deleteUser(userId); // 🔥 backend call
+    setUsers(users.filter(u => u.userId !== userId));
+    if (fromRequest) {
+      setDeleteRequests(deleteRequests.filter(r => r.userId !== userId));
+      setNotifOpen(false);
+    }
+    setUserDelConfirm(null);
+  } catch (err) {
+    console.error(err);
+    alert("Error deleting user");
+  }
+};
 
   const denyDeleteRequest = (reqId) => {
     setDeleteRequests(deleteRequests.filter(r => r.reqId !== reqId));
@@ -525,7 +546,9 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {users.length === 0 && <tr><td colSpan="6" className="empty-row">No users found.</td></tr>}
-                  {users.map(u => {
+                  {users
+                     .filter(u => u.userType !== "A")
+                     .map(u => {
                     const hasRequest = deleteRequests.some(r => r.userId === u.userId);
                     return (
                       <tr key={u.userId} className={hasRequest ? "row-warning" : ""}>
@@ -538,8 +561,9 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td>{u.email}</td>
-                        <td>{u.phone}</td>
-                        <td>{u.joinDate}</td>
+                        
+                        <td>{u.phoneNumber}</td>
+                        <td>{u.joinDate || "-"}</td>
                         <td>
                           <button
                             className="btn-delete"
