@@ -1,7 +1,9 @@
 import { useState,useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
+import { ThemeContext } from "../../context/ThemeContext";
 import axios  from "axios";
+import { toast } from "react-toastify";
 import "./Login.css";
 
 export default function Login() {
@@ -11,9 +13,15 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
 
  const { login } = useContext(AuthContext);
+ const { toggleTheme, theme } = useContext(ThemeContext);
 
 const handleLogin = async (e) => {
   e.preventDefault();
+
+  if (!email || !password) {
+    toast.error("Please fill in all fields!");
+    return;
+  }
 
   try {
     const res = await axios.post(
@@ -26,6 +34,7 @@ const handleLogin = async (e) => {
     const token = res.data; // ✅ FIXED
 
     login(token);
+    toast.success("Login successful!");
     const payload = JSON.parse(atob(token.split(".")[1]));
     const role = payload.role;
     
@@ -37,7 +46,13 @@ const handleLogin = async (e) => {
     }
 
   } catch (e) {
-    alert("Login Failed");
+    if (e.response?.status === 401) {
+      toast.error("Invalid Email or Password!");
+    } else if (e.response?.status === 404) {
+      toast.error("User not found!");
+    } else {
+      toast.error(e.response?.data?.message || "Login Failed!");
+    }
   }
 };
   return (
@@ -47,9 +62,10 @@ const handleLogin = async (e) => {
       {/* NAV */}
       <nav className="auth-nav">
         <div className="logo">
-          ✈︎ Sky<span>Way</span>
+          ✈︎ Sky<span>Ways</span>
         </div>
         <div className="nav-right">
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
           <span className="nav-text">Don't have an account?</span>
           <a href="/" className="nav-cta">Sign Up</a>
         </div>
@@ -62,7 +78,7 @@ const handleLogin = async (e) => {
             <div className="card-icon">🔑</div>
             <h1 className="card-title">Welcome Back</h1>
             <p className="card-sub">
-              Log in to your SkyWay account to manage your bookings.
+              Log in to your Sky Ways account to manage your bookings.
             </p>
           </div>
 

@@ -6,6 +6,8 @@ import axios from "axios";
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { FaWallet } from "react-icons/fa";
+import { toast } from "react-toastify";
+import { ThemeContext } from "../../context/ThemeContext";
 
 const COLOR_PALETTE = [
   ["#1a73e8", "#0d47a1"],
@@ -438,7 +440,8 @@ useEffect(() => {
 // ── Main Home Component ───────────────────────────────────────
 export default function Home() {
   const navigate = useNavigate();
-   const {profile}=useContext(AuthContext);
+   const {profile, logout}=useContext(AuthContext);
+   const { toggleTheme, theme } = useContext(ThemeContext);
    console.log(profile);
 const firstname = profile?.firstName || "User";
   const [form, setForm]         = useState({ from: "", to: "", date: "", passengers: "1" });
@@ -449,6 +452,7 @@ const firstname = profile?.firstName || "User";
 
   // ── Profile modal state ───────────────────────────────────
   const [showProfile, setShowProfile] = useState(false);
+  const [showWallet, setShowWallet] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
   const handleSwap   = ()  => setForm({ ...form, from: form.to, to: form.from });
@@ -488,7 +492,8 @@ const handleLogout = async () => {
 
   try {
     await axios.put(`http://localhost:8082/api/users/${profile.userId}`);
-    
+    logout();
+    toast.success("Logged out successfully!");
     navigate("/login");
   } catch (error) {
     console.error("Logout failed:", error);
@@ -511,17 +516,18 @@ const handleLogout = async () => {
 
       {/* ── NAVBAR ── */}
       <nav className="home-nav">
-        <div className="logo">✈︎ Sky<span>Way</span></div>
+        <div className="logo">✈︎ Sky<span>Ways</span></div>
         <div className="nav-links">
           <a href="#" className="nav-link active">Flights</a>
           <a href="#" className="nav-link">My Bookings</a>
         </div>
         <div className="nav-right">
-           <div className="wallet-icon" title="Wallet">
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
+           <div className="wallet-icon" title="Click to view balance" onClick={() => setShowWallet(!showWallet)}>
     <FaWallet />
-    <span className="wallet-amount">
+    {showWallet && <span className="wallet-amount">
       ₹{profile?.wallet ?? 0}
-    </span>
+    </span>}
   </div>
           {/* ── Clickable user badge ── */}
           <div
@@ -541,7 +547,6 @@ const handleLogout = async () => {
 
       {/* ── HERO ── */}
       <div className="hero">
-        <p className="hero-tag">✦ Your journey starts here</p>
         <h1 className="hero-title">
           Where do you want<br />to <span>fly today?</span>
         </h1>

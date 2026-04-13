@@ -200,7 +200,7 @@ const orderRes = await axios.post(
             <div className="pp-body" /><div className="pp-wing-top" />
             <div className="pp-wing-bot" /><div className="pp-trail" />
           </div>
-          <p className="fly-label">SkyWay Airlines</p>
+          <p className="fly-label">Sky Ways Airlines</p>
         </div>
       )}
 
@@ -232,7 +232,7 @@ const orderRes = await axios.post(
               ))}
             </div>
 
-            <p className="pay-secure">🔒 Secured by SkyWay Payment Gateway</p>
+            <p className="pay-secure">🔒 Secured by Sky Ways Payment Gateway</p>
           </div>
         </div>
       )}
@@ -266,7 +266,7 @@ const orderRes = await axios.post(
         <div className="form-stage">
           <div className="glass-card form-appear">
             <div className="form-top-bar">
-              <span className="form-logo">✈︎ SkyWay</span>
+              <span className="form-logo">✈︎ Sky Ways</span>
               <h2 className="form-heading">Flight Booking</h2>
             </div>
 

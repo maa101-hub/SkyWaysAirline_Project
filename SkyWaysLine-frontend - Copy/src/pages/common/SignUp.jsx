@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import axios from 'axios';
 import { useNavigate } from "react-router-dom";
+import { ThemeContext } from "../../context/ThemeContext";
+import { toast } from "react-toastify";
 import "./SignUp.css";
 
 const HINTS = [
@@ -12,6 +14,7 @@ const HINTS = [
 
 export default function SignUp() {
  const nevigaet=useNavigate();
+ const { toggleTheme, theme } = useContext(ThemeContext);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -37,7 +40,7 @@ export default function SignUp() {
   const { firstName, lastName, dob, gender, address, email, phone, password } = form;
 
   if (!firstName || !lastName || !dob || !gender || !address || !email || !phone || !password) {
-    alert("Please fill in all fields.");
+    toast.error("Please fill in all fields!");
     return;
   }
 
@@ -56,14 +59,16 @@ export default function SignUp() {
       }
     );
   
-    alert("Account created successfully!");
+    toast.success("Account created successfully!");
     nevigaet('/login');
 
   } catch (error) {
     if (error.response && error.response.status === 400) {
+      const errorMsg = error.response.data?.message || error.response.data?.email || "Signup failed";
+      toast.error(errorMsg);
       setErrors(error.response.data); 
     } else {
-      alert("Signup failed");
+      toast.error(error.response?.data?.message || "Signup failed!");
     }
   }
 };
@@ -75,9 +80,10 @@ export default function SignUp() {
       {/* NAV */}
       <nav className="auth-nav">
         <div className="logo">
-          ✈︎ Sky<span>Way</span>
+          ✈︎ Sky<span>Ways</span>
         </div>
         <div className="nav-right">
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
           <span className="nav-text">Already have an account?</span>
           <a href="/login" className="nav-cta">Log In</a>
         </div>
@@ -89,7 +95,7 @@ export default function SignUp() {
           <div className="card-header">
             <div className="card-icon">✈︎</div>
             <h1 className="card-title">Create an Account</h1>
-            <p className="card-sub">Join SkyWay and start booking flights in minutes.</p>
+            <p className="card-sub">Join Sky Ways and start booking flights in minutes.</p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate>

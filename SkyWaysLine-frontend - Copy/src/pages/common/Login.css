@@ -13,6 +13,18 @@
   --input-bg: rgba(255, 255, 255, 0.04);
 }
 
+[data-theme="light"] {
+  --navy: #f0f4f8;
+  --card: #ffffff;
+  --sky: #007bff;
+  --sky-light: #66b3ff;
+  --accent: #ffc107;
+  --text: #212529;
+  --muted: #6c757d;
+  --border: rgba(0, 123, 255, 0.18);
+  --input-bg: rgba(255, 255, 255, 0.96);
+}
+
 /* ── Background ── */
 .auth-bg {
   font-family: 'DM Sans', sans-serif;
@@ -104,6 +116,19 @@
 .nav-cta:hover {
   background: var(--sky);
   color: var(--navy);
+}
+
+.theme-toggle {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.2s;
+}
+
+.theme-toggle:hover {
+  transform: rotate(20deg);
 }
 
 /* ── Wrapper ── */
