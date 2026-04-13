@@ -32,12 +32,14 @@ public class UserProfile {
 
     @Column(unique = true)
     private String email;
-    private double wallet;
-    public double getWallet() {
+    private Double wallet;
+    
+
+	public Double getWallet() {
 		return wallet;
 	}
 
-	public void setWallet(double wallet) {
+	public void setWallet(Double wallet) {
 		this.wallet = wallet;
 	}
 

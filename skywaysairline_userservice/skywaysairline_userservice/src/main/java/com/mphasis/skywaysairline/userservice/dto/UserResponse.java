@@ -21,7 +21,7 @@ public class UserResponse {
 	@NotBlank(message = "Address is required")
 	private String address;
 	private String userType;
-	private double wallet;
+	private Double wallet;
 	private Integer status;
 
 	public Integer getStatus() {
@@ -30,10 +30,10 @@ public class UserResponse {
 	public void setStatus(Integer status) {
 		this.status = status;
 	}
-	public double getWallet() {
+	public Double getWallet() {
 		return wallet;
 	}
-	public void setWallet(double wallet) {
+	public void setWallet(Double wallet) {
 		this.wallet = wallet;
 	}
 	public String getUserType() {

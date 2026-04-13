@@ -49,7 +49,8 @@ public class UserService {
         profile.setAddress(request.getAddress());
         profile.setPhone(request.getPhone());
         profile.setEmail(request.getEmail());
-        profile.setWallet(1000000);
+        Double intial_money=(double) 1000000;
+        profile.setWallet(intial_money);
         UserCredentials credentials = new UserCredentials();
         String encodedPassword = passwordEncoder.encode(request.getPassword());
         credentials.setPassword(encodedPassword);
