@@ -541,6 +541,26 @@
 }
 .bar-label { font-size: 0.72rem; color: var(--muted); }
 
+.total-col {
+  border-left: 2px solid var(--sky);
+  padding-left: 16px;
+  margin-left: 16px;
+}
+
+.total-val {
+  color: var(--sky) !important;
+  font-weight: 700 !important;
+}
+
+.total-fill {
+  background: linear-gradient(0deg, var(--green), var(--sky)) !important;
+}
+
+.total-label {
+  color: var(--sky) !important;
+  font-weight: 600 !important;
+}
+
 /* ── Quick stats ── */
 .quick-row {
   display: grid; grid-template-columns: repeat(4, 1fr);
@@ -570,6 +590,7 @@
 }
 
 .warn-num { color: var(--red) !important; }
+.active-num { color: var(--green) !important; }
 
 .row-warning { background: rgba(224,85,85,0.04) !important; }
 .row-warning:hover { background: rgba(224,85,85,0.08) !important; }
