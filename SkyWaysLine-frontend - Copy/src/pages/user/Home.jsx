@@ -184,6 +184,13 @@ const seatStatus = getSeatStatus(fl.seats);
 
 // ── Profile Modal ─────────────────────────────────────────────
 function ProfileModal({ onClose }) {
+  // Helper function to format DOB for display (yyyy-mm-dd to dd/mm/yyyy)
+  const formatDOB = (dob) => {
+    if (!dob) return "—";
+    const [year, month, day] = dob.split("-");
+    return `${day}/${month}/${year}`;
+  };
+
   const [editForm, setEditForm] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving]     = useState(false);
@@ -338,7 +345,7 @@ useEffect(() => {
                 {[
                   { label: "First Name", val: profile.firstName },
                   { label: "Last Name",  val: profile.lastName  },
-                  { label: "Date of Birth", val: profile.dob   },
+                  { label: "Date of Birth", val: formatDOB(profile.dob)   },
                   { label: "Gender",     val: profile.gender    },
                   { label: "Address",    val: profile.address, full: true },
                 ].map((item) => (

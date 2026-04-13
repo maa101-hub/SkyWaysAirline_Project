@@ -8,6 +8,7 @@ import { API, flightAPI, getUsers,deleteUser } from "../../api";
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
+
 import { ThemeContext } from "../../context/ThemeContext";
 
 
@@ -18,13 +19,7 @@ const blankSchedule = { scheduleId:"", flightId:"", routeId:"", travelDuration:"
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 // ── Mock data for new features (replace with API calls) ────────
-const MOCK_USERS = [
-  { userId:"USR-001", firstName:"Rahul",  lastName:"Sharma",  email:"rahul@email.com",  phone:"9876543210", joinDate:"2024-01-15", status:"active" },
-  { userId:"USR-002", firstName:"Priya",  lastName:"Singh",   email:"priya@email.com",  phone:"9876543211", joinDate:"2024-02-20", status:"active" },
-  { userId:"USR-003", firstName:"Amit",   lastName:"Kumar",   email:"amit@email.com",   phone:"9876543212", joinDate:"2024-03-10", status:"active" },
-  { userId:"USR-004", firstName:"Sneha",  lastName:"Patel",   email:"sneha@email.com",  phone:"9876543213", joinDate:"2024-04-05", status:"active" },
-  { userId:"USR-005", firstName:"Vikram", lastName:"Joshi",   email:"vikram@email.com", phone:"9876543214", joinDate:"2024-05-18", status:"active" },
-];
+
 const MOCK_DELETE_REQUESTS = [
   { reqId:"REQ-001", userId:"USR-003", name:"Amit Kumar",  email:"amit@email.com",  requestedAt:"2024-06-10 09:30", reason:"No longer needed" },
   { reqId:"REQ-002", userId:"USR-005", name:"Vikram Joshi", email:"vikram@email.com", requestedAt:"2024-06-11 14:15", reason:"Privacy concerns" },
@@ -350,7 +345,7 @@ const fetchUsers = async () => {
                 <div className="ov-card-icon">👥</div>
                 <div>
                   <p className="ov-label">Registered Users</p>
-                  <p className="ov-value">{users.length}</p>
+                  <p className="ov-value">{users.filter(u => u.userType !== "A").length}</p>
                   <p className="ov-sub">Active accounts</p>
                 </div>
               </div>
@@ -369,7 +364,7 @@ const fetchUsers = async () => {
 
             {/* ── Revenue chart (CSS bar chart) ── */}
             <div className="revenue-section">
-              <p className="section-head">Monthly Revenue (₹)</p>
+              <p className="section-head">Annual Revenue 2024 (₹)</p>
               <div className="bar-chart">
                 {MOCK_REVENUE_MONTHLY.map((val, i) => {
                   const max = Math.max(...MOCK_REVENUE_MONTHLY);
@@ -384,6 +379,13 @@ const fetchUsers = async () => {
                     </div>
                   );
                 })}
+                <div className="bar-col total-col">
+                  <p className="bar-val total-val">₹{(MOCK_REVENUE_MONTHLY.reduce((a,b)=>a+b,0)/1000).toFixed(0)}K</p>
+                  <div className="bar-track">
+                    <div className="bar-fill total-fill" style={{ height: '100%' }} />
+                  </div>
+                  <p className="bar-label total-label">Total</p>
+                </div>
               </div>
             </div>
 
@@ -539,7 +541,7 @@ const fetchUsers = async () => {
 
             <div className="stats-row">
               <div className="stat-card"><p className="stat-num">{users.length}</p><p className="stat-label">Total Users</p></div>
-              <div className="stat-card"><p className="stat-num">{users.filter(u=>u.status==="active").length}</p><p className="stat-label">Active</p></div>
+              <div className="stat-card"><p className="stat-num active-num">{users.filter(u=>u.status==="active").length}</p><p className="stat-label">Active</p></div>
               <div className="stat-card"><p className="stat-num warn-num">{deleteRequests.length}</p><p className="stat-label">Delete Requests</p></div>
             </div>
 

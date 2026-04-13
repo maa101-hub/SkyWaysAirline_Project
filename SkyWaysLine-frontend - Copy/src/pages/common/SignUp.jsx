@@ -29,8 +29,25 @@ export default function SignUp() {
   const [showPw, setShowPw] = useState(false);
   const [errors, setErrors] = useState({});
   const handleChange = (e) => {
+    let value = e.target.value;
 
-    setForm({ ...form, [e.target.name]: e.target.value });
+    // Auto-format DOB field
+    if (e.target.name === 'dob') {
+      // Remove any existing slashes and non-numeric characters
+      value = value.replace(/[^0-9]/g, '');
+      
+      // Add slashes at appropriate positions
+      if (value.length >= 2) {
+        value = value.slice(0, 2) + '/' + value.slice(2);
+      }
+      if (value.length >= 5) {
+        value = value.slice(0, 5) + '/' + value.slice(5);
+      }
+      // Limit to 10 characters (dd/mm/yyyy)
+      value = value.slice(0, 10);
+    }
+
+    setForm({ ...form, [e.target.name]: value });
     setErrors({ ...errors, [e.target.name]: "" });
   };
 
@@ -44,13 +61,43 @@ export default function SignUp() {
     return;
   }
 
+  // Validate DOB format (dd/mm/yyyy)
+  const dobRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  if (!dobRegex.test(dob)) {
+    toast.error("Please enter date of birth in dd/mm/yyyy format!");
+    return;
+  }
+
+  const [, day, month, year] = dob.match(dobRegex);
+  const dateObj = new Date(`${year}-${month}-${day}`);
+  if (dateObj.getDate() != day || dateObj.getMonth() + 1 != month || dateObj.getFullYear() != year) {
+    toast.error("Please enter a valid date!");
+    return;
+  }
+
+  // Check if user is at least 18 years old
+  const today = new Date();
+  const age = today.getFullYear() - dateObj.getFullYear();
+  const monthDiff = today.getMonth() - dateObj.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateObj.getDate())) {
+    age--;
+  }
+  if (age < 18) {
+    toast.error("You must be at least 18 years old to register!");
+    return;
+  }
+
   try {
+    // Convert DOB from dd/mm/yyyy to yyyy-mm-dd for backend
+    const [day, month, year] = form.dob.split('/');
+    const formattedDob = `${year}-${month}-${day}`;
+
     const res = await axios.post(
       "http://localhost:8082/api/users/register",
       {
         firstName: form.firstName,
         lastName: form.lastName,
-        dob: form.dob,
+        dob: formattedDob,
         gender: form.gender,
         address: form.address,
         phone: form.phone,
@@ -139,7 +186,8 @@ export default function SignUp() {
                 <input
                   id="dob"
                   name="dob"
-                  type="date"
+                  type="text"
+                  placeholder="dd/mm/yyyy"
                   value={form.dob}
                   onChange={handleChange}
                   required
