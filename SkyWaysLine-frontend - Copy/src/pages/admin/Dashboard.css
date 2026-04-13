@@ -17,6 +17,22 @@
   --ibg:    rgba(255,255,255,0.05);
 }
 
+[data-theme="light"] {
+  --navy:   #f0f4f8;
+  --side:   #ffffff;
+  --card:   #ffffff;
+  --card-h: #f8f9fa;
+  --sky:    #007bff;
+  --sky-l:  #66b3ff;
+  --accent: #ffc107;
+  --green:  #28a745;
+  --red:    #dc3545;
+  --text:   #212529;
+  --muted:  #6c757d;
+  --border: rgba(0,123,255,0.16);
+  --ibg:    rgba(0,0,0,0.05);
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 .dash-bg {
@@ -101,6 +117,15 @@
   transition: background 0.2s;
 }
 .logout-side:hover { background: rgba(224,85,85,0.2); color: #ff9b9b; }
+
+.theme-toggle {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text-color);
+  margin-right: 10px;
+}
 
 /* ── Main ── */
 .dash-main {

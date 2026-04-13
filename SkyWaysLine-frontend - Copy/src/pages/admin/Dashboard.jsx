@@ -5,6 +5,10 @@ import { useNavigate } from "react-router-dom";
 //RK
 //import { getUsers } from "../../api.jsx";
 import { API, flightAPI, getUsers,deleteUser } from "../../api";
+import { useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
+import { toast } from "react-toastify";
+import { ThemeContext } from "../../context/ThemeContext";
 
 
 // ── Blank forms ───────────────────────────────────────────────
@@ -31,6 +35,8 @@ const MOCK_REVENUE_MONTHLY = [420000, 510000, 380000, 620000, 590000, 710000];
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
+  const { toggleTheme, theme } = useContext(ThemeContext);
   const [tab, setTab] = useState("overview");
   // ── Existing state (unchanged) ────────────────────────────
   const [flights,   setFlights]   = useState([]);
@@ -214,7 +220,7 @@ const fetchUsers = async () => {
           SIDEBAR
       ══════════════════════════════════════ */}
       <aside className="sidebar">
-        <div className="sidebar-logo">✈︎ Sky<span>Way</span></div>
+        <div className="sidebar-logo">✈︎ Sky<span>Ways</span></div>
         <p className="sidebar-role">Admin Panel</p>
 
         <nav className="sidebar-nav">
@@ -239,7 +245,7 @@ const fetchUsers = async () => {
         </nav>
 
         <div className="sidebar-bottom">
-          <button className="logout-side" onClick={()=>{ if(window.confirm("Logout?")) navigate("/login"); }}>
+          <button className="logout-side" onClick={()=>{ if(window.confirm("Logout?")) { logout(); toast.success("Logged out successfully!"); navigate("/login"); } }}>
             ⎋ Logout
           </button>
         </div>
@@ -250,6 +256,7 @@ const fetchUsers = async () => {
       ══════════════════════════════════════ */}
       <div className="dash-topbar" ref={notifRef}>
         <div className="topbar-right">
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
           <button className="notif-bell" onClick={() => setNotifOpen(!notifOpen)}>
             🔔
             {deleteRequests.length > 0 && (
@@ -604,7 +611,7 @@ const fetchUsers = async () => {
                 </div>
                 <div className="field">
                   <label>Flight Name <span className="req">*</span></label>
-                  <input placeholder="e.g. SkyWay Premium" value={flightForm.flightName}
+                  <input placeholder="e.g. Sky Ways Premium" value={flightForm.flightName}
                     onChange={e=>setFlightForm({...flightForm, flightName:e.target.value})} />
                 </div>
               </div>

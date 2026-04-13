@@ -105,6 +105,19 @@
   color: var(--navy);
 }
 
+.theme-toggle {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: var(--text);
+  transition: transform 0.2s;
+}
+
+.theme-toggle:hover {
+  transform: rotate(20deg);
+}
+
 /* ── Wrapper ── */
 .auth-wrapper {
   position: relative;
