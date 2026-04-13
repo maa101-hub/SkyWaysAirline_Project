@@ -803,3 +803,14 @@
   50%  { text-shadow: 0 0 8px rgba(42,157,143,0.6); }
   100% { text-shadow: 0 0 0px rgba(42,157,143,0); }
 }
+.wallet-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.wallet-amount {
+  font-size: 14px;
+}

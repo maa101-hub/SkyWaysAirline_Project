@@ -5,6 +5,7 @@ import axios from "axios";
 
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
+import { FaWallet } from "react-icons/fa";
 
 const COLOR_PALETTE = [
   ["#1a73e8", "#0d47a1"],
@@ -480,12 +481,19 @@ const firstname = profile?.firstName || "User";
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm("Are you sure you want to logout?")) {
-      navigate("/login");
-    }
-  };
+const handleLogout = async () => {
+  const confirmLogout = window.confirm("Are you sure you want to logout?");
+  
+  if (!confirmLogout) return;
 
+  try {
+    await axios.put(`http://localhost:8082/api/users/${profile.userId}`);
+    
+    navigate("/login");
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+};
   const sorted = useMemo(() => {
     return [...results].sort((a, b) => {
       if (sortBy === "fare")      return a.fare - b.fare;
@@ -507,9 +515,14 @@ const firstname = profile?.firstName || "User";
         <div className="nav-links">
           <a href="#" className="nav-link active">Flights</a>
           <a href="#" className="nav-link">My Bookings</a>
-          <a href="#" className="nav-link">Check-in</a>
         </div>
         <div className="nav-right">
+           <div className="wallet-icon" title="Wallet">
+    <FaWallet />
+    <span className="wallet-amount">
+      ₹{profile?.wallet ?? 0}
+    </span>
+  </div>
           {/* ── Clickable user badge ── */}
           <div
             className="user-badge"
