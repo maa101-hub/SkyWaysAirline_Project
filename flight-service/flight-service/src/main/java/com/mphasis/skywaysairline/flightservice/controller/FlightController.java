@@ -50,7 +50,7 @@ public class FlightController {
     @PutMapping("/{id}")
     public ResponseEntity<FlightRequest> updateFlight(
             @PathVariable String id,
-            @RequestBody FlightRequest dto) {
+            @Valid @RequestBody FlightRequest dto) {
 
         return ResponseEntity.ok(service.updateFlight(id, dto));
     }

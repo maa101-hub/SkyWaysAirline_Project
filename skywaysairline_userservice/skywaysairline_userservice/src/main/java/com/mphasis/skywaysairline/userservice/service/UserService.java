@@ -18,6 +18,8 @@ import com.mphasis.skywaysairline.userservice.model.UserProfile;
 import com.mphasis.skywaysairline.userservice.repo.UserCredentialsRepository;
 import com.mphasis.skywaysairline.userservice.repo.UserProfileRepository;
 import com.mphasis.skywaysairline.userservice.security.JwtUtil;
+
+import jakarta.transaction.Transactional;
  
 @Service
 public class UserService {
@@ -169,7 +171,31 @@ public class UserService {
     	credentialsRepo.save(credentials);
     	return "User LogOut SuccessFully";
     }
-    
-    
+    @Transactional
+    public String transferMoney(String customerId, Double price) {
+
+        UserCredentials customer = credentialsRepo.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found"));
+
+        UserCredentials admin = credentialsRepo.findById("admin")
+                .orElseThrow(() -> new RuntimeException("Admin not found"));
+
+        Double customerWallet = customer.getUserProfile().getWallet() != null ? customer.getUserProfile().getWallet() : 0;
+        Double adminWallet = admin.getUserProfile().getWallet() != null ? admin.getUserProfile().getWallet() : 0;
+
+        if (customerWallet < price) {
+            throw new RuntimeException("Insufficient balance");
+        }
+
+        customer.getUserProfile().setWallet(customerWallet - price);
+        admin.getUserProfile().setWallet(adminWallet + price);
+
+        credentialsRepo.save(customer);
+        credentialsRepo.save(admin);
+
+        profileRepo.save(customer.getUserProfile());
+        profileRepo.save(admin.getUserProfile());
+        return "Wallet Updated Succe fully";
+    }
     
 }

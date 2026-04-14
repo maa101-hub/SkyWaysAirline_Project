@@ -46,7 +46,7 @@ public class ScheduleController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ScheduleRequest>> update(
             @PathVariable String id,
-            @RequestBody ScheduleRequest dto) {
+           @Valid @RequestBody ScheduleRequest dto) {
 
         return ResponseEntity.ok(
                 new ApiResponse<>("Schedule updated", service.updateSchedule(id, dto))

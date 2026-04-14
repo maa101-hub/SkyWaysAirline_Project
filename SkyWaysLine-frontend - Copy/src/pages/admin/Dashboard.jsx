@@ -60,7 +60,8 @@ export default function Dashboard() {
   const [userDelConfirm, setUserDelConfirm] = useState(null); // { userId, name, fromRequest }
   const [reqApproveId, setReqApproveId]     = useState(null); // highlight animation
   const notifRef = useRef(null);
-
+  const {profile}=useContext(AuthContext);
+ const wallet = profile?.wallet ?? 0;
   // ── Existing API calls (unchanged) ───────────────────────
   useEffect(() => {
     flightAPI.get("/api/flights")
@@ -88,7 +89,6 @@ export default function Dashboard() {
 const fetchUsers = async () => {
   try {
     const res = await getUsers();
-    console.log("Users from backend:", res.data);
     setUsers(res.data);
   } catch (err) {
     console.error("Error fetching users:", err);
@@ -325,7 +325,7 @@ const fetchUsers = async () => {
                 <div className="ov-card-icon">💰</div>
                 <div>
                   <p className="ov-label">Admin Wallet</p>
-                  <p className="ov-value">₹{MOCK_WALLET_BALANCE.toLocaleString("en-IN")}</p>
+                  <p className="ov-value">₹{wallet}</p>
                   <p className="ov-sub">Total revenue collected</p>
                 </div>
               </div>
@@ -540,7 +540,7 @@ const fetchUsers = async () => {
             </div>
 
             <div className="stats-row">
-              <div className="stat-card"><p className="stat-num">{users.length}</p><p className="stat-label">Total Users</p></div>
+              <div className="stat-card"><p className="stat-num">{users.length-1}</p><p className="stat-label">Total Users</p></div>
               <div className="stat-card"><p className="stat-num active-num">{users.filter(u=>u.status==="active").length}</p><p className="stat-label">Active</p></div>
               <div className="stat-card"><p className="stat-num warn-num">{deleteRequests.length}</p><p className="stat-label">Delete Requests</p></div>
             </div>

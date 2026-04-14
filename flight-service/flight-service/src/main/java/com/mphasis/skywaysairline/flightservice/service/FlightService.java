@@ -135,7 +135,7 @@ public class FlightService {
         return result;
     }
     public FlightResponse getFlightDetails(String scheduleId) {
-
+         System.out.print(scheduleId);
         Schedule schedule = scheduleRepo.findById(scheduleId)
                 .orElseThrow(() -> new RuntimeException("Schedule not found"));
 
