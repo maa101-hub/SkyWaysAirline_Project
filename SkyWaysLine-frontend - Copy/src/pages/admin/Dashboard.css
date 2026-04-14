@@ -15,8 +15,10 @@
   --muted:  #7b84b0;
   --border: rgba(79,163,227,0.16);
   --ibg:    rgba(255,255,255,0.05);
+  --topbar-bg: rgba(10,15,44,0.9);
 }
 
+/* updated by Rohit Kaithwas: added topbar background variable so admin topbar follows light/dark theme */
 [data-theme="light"] {
   --navy:   #f0f4f8;
   --side:   #ffffff;
@@ -31,6 +33,7 @@
   --muted:  #6c757d;
   --border: rgba(0,123,255,0.16);
   --ibg:    rgba(0,0,0,0.05);
+  --topbar-bg: rgba(255,255,255,0.95);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -344,7 +347,7 @@
   position: fixed; top: 0;
   left: 220px; right: 0;
   height: 64px;
-  background: rgba(10,15,44,0.9);
+  background: var(--topbar-bg);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: flex-end;
