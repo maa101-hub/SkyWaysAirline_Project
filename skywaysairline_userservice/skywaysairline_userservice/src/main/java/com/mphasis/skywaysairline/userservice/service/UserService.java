@@ -176,8 +176,9 @@ public class UserService {
 
         UserCredentials customer = credentialsRepo.findById(customerId)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
-
-        UserCredentials admin = credentialsRepo.findById("admin")
+/// kaithwas admin id -admin123
+/// //sourabh adminid-admin
+        UserCredentials admin = credentialsRepo.findById("admin123")
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
         Double customerWallet = customer.getUserProfile().getWallet() != null ? customer.getUserProfile().getWallet() : 0;

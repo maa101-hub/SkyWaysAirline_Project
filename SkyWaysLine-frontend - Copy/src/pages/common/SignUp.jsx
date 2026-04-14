@@ -79,9 +79,6 @@ export default function SignUp() {
   const today = new Date();
   const age = today.getFullYear() - dateObj.getFullYear();
   const monthDiff = today.getMonth() - dateObj.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dateObj.getDate())) {
-    age--;
-  }
   if (age < 18) {
     toast.error("You must be at least 18 years old to register!");
     return;
