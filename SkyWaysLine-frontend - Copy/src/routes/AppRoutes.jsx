@@ -8,6 +8,7 @@ import AdminDashboard from "../pages/admin/Dashboard";
 import Home from "../pages/user/Home";
 import Dashboard from "../pages/admin/Dashboard";
 import BookNow from "../pages/Booking/BookNow";
+import BoardingPass from "../pages/BoardingPass/BoardingPass";
 
 function AppRoutes() {
   return (
@@ -17,7 +18,7 @@ function AppRoutes() {
       <Route path="/home" element={<Home/>}/>
       <Route path="/admin" element={<Dashboard></Dashboard>}></Route>
       <Route path="/booking" element={<BookNow></BookNow>}></Route>
-
+      <Route path="/boarding-pass" element={<BoardingPass />} />
     </Routes>
   );
 }

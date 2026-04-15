@@ -1,0 +1,820 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow:wght@300;400;500;600;700&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --blue: #1a56a0;
+  --blue-mid: #1d62b8;
+  --blue-dark: #123f7a;
+  --blue-deep: #0d2f5e;
+  --white: #ffffff;
+  --off-white: #f7f8fa;
+  --muted: #8a9bb5;
+  --text: #10213a;
+  --border: rgba(26, 86, 160, 0.12);
+  --r: 16px;
+  --font: 'Barlow', sans-serif;
+  --font-c: 'Barlow Condensed', sans-serif;
+}
+
+.boarding-pass-page {
+  font-family: var(--font);
+  background: #e8edf5;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  padding: 50px 24px;
+}
+
+/* ── PAGE LABEL ── */
+.page-label {
+  font-family: var(--font-c);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #7a8fa8;
+}
+
+.bp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.8rem;
+  margin-bottom: 1rem;
+}
+
+.btn-download,
+.btn-share {
+  border: none;
+  border-radius: 999px;
+  padding: 0.95rem 1.6rem;
+  font-family: var(--font-c);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease;
+}
+
+.btn-download {
+  background: linear-gradient(135deg, var(--blue-mid), var(--blue-dark));
+  color: var(--white);
+}
+
+.btn-share {
+  background: rgba(255,255,255,0.96);
+  color: var(--blue-dark);
+  box-shadow: inset 0 0 0 1px rgba(26, 86, 160, 0.12);
+}
+
+.btn-download:hover,
+.btn-share:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(15, 43, 90, 0.16);
+}
+
+.boarding-pass-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: min(100%, 760px);
+}
+
+@media (max-width: 800px) {
+  .confirmation-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .bp-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .boarding-pass-content {
+    width: 100%;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   TICKET 1 — Horizontal split (portrait orientation)
+   Left: white · Right: blue
+   ═══════════════════════════════════════════════ */
+.ticket-1 {
+  display: flex;
+  width: 760px;
+  max-width: 100%;
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px rgba(10, 30, 70, 0.22),
+    0 4px 12px rgba(10, 30, 70, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.5);
+  position: relative;
+}
+
+/* Perforated divider */
+.ticket-1::after {
+  content: '';
+  position: absolute;
+  left: calc(62% - 0.5px);
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 6px,
+    rgba(26, 86, 160, 0.18) 6px,
+    rgba(26, 86, 160, 0.18) 12px
+  );
+  z-index: 5;
+}
+
+/* Left half circles for perforation */
+.ticket-1 .perf-top,
+.ticket-1 .perf-bot {
+  position: absolute;
+  left: calc(62% - 14px);
+  width: 28px;
+  height: 14px;
+  background: #e8edf5;
+  z-index: 6;
+  border: 1px solid rgba(26, 86, 160, 0.15);
+}
+.ticket-1 .perf-top {
+  top: -1px;
+  border-radius: 0 0 14px 14px;
+  border-top: none;
+}
+.ticket-1 .perf-bot {
+  bottom: -1px;
+  border-radius: 14px 14px 0 0;
+  border-bottom: none;
+}
+
+/* ── Left (white) panel ── */
+.t1-left {
+  flex: 0 0 62%;
+  background: var(--white);
+  padding: 28px 30px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Airline header */
+.t1-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.airline-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.logo-icon {
+  width: 38px;
+  height: 38px;
+  background: var(--blue);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.logo-icon svg {
+  display: block;
+}
+.airline-name {
+  font-family: var(--font-c);
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--blue-dark);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+.badge {
+  padding: 3px 14px;
+  background: var(--blue);
+  color: var(--white);
+  font-family: var(--font-c);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 3px;
+}
+.badge.outline {
+  background: transparent;
+  border: 1.5px solid var(--blue);
+  color: var(--blue);
+}
+
+/* Route display */
+.t1-route {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 0;
+}
+.route-city {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.route-label {
+  font-family: var(--font-c);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.route-iata {
+  font-family: var(--font-c);
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--blue-dark);
+  letter-spacing: -0.01em;
+}
+.route-cityname {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+.route-arrow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  padding-bottom: 16px;
+  gap: 0;
+}
+.route-dots {
+  flex: 1;
+  height: 1.5px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--blue) 0px,
+    var(--blue) 5px,
+    transparent 5px,
+    transparent 10px
+  );
+}
+.route-plane-icon {
+  flex-shrink: 0;
+  color: var(--blue);
+  margin: 0 4px;
+}
+
+/* Details grid */
+.t1-details {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr auto;
+  gap: 16px 12px;
+  align-items: start;
+}
+.detail-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.detail-label {
+  font-family: var(--font-c);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.detail-value {
+  font-family: var(--font-c);
+  font-size: 0.97rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  letter-spacing: 0.02em;
+}
+
+/* QR code */
+.qr-box {
+  width: 72px;
+  height: 72px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 5px;
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1.5px;
+  align-self: center;
+}
+.qr-cell {
+  border-radius: 1px;
+  background: transparent;
+}
+.qr-cell.b {
+  background: var(--blue-dark);
+}
+
+/* ── Right (blue) panel ── */
+.t1-right {
+  flex: 0 0 38%;
+  background: linear-gradient(160deg, var(--blue-mid) 0%, var(--blue-dark) 100%);
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: var(--white);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle texture */
+.t1-right::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.04) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.bp-title {
+  font-family: var(--font-c);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--white);
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  padding-bottom: 14px;
+}
+
+/* Mini route in right panel */
+.bp-mini-route {
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px 12px;
+  gap: 6px;
+}
+.bp-mini-label {
+  font-family: var(--font-c);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  display: block;
+  margin-bottom: 2px;
+}
+.bp-mini-iata {
+  font-family: var(--font-c);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--white);
+}
+.bp-mini-city {
+  font-size: 0.62rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 400;
+  display: block;
+}
+.bp-mini-arrow {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+.bp-mini-dots {
+  flex: 1;
+  height: 1px;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.5) 0px,
+    rgba(255, 255, 255, 0.5) 4px,
+    transparent 4px,
+    transparent 8px
+  );
+}
+.bp-mini-plane {
+  color: var(--white);
+  opacity: 0.8;
+}
+
+/* Info rows */
+.bp-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 8px;
+}
+.bp-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bp-info-label {
+  font-family: var(--font-c);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+.bp-info-val {
+  font-family: var(--font-c);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: 0.02em;
+}
+.bp-info-cell.wide {
+  grid-column: span 2;
+}
+
+/* Times row */
+.bp-times {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 10px;
+}
+.bp-time-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bp-time-label {
+  font-family: var(--font-c);
+  font-size: 0.55rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+.bp-time-val {
+  font-family: var(--font-c);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
+/* GROUP + SEAT big boxes */
+.bp-boxes {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+.bp-big-box {
+  flex: 1;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-radius: 8px;
+  padding: 8px 6px;
+  text-align: center;
+}
+.bp-big-label {
+  font-family: var(--font-c);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  display: block;
+  margin-bottom: 4px;
+}
+.bp-big-val {
+  font-family: var(--font-c);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--white);
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════
+   TICKET 2 — Landscape (wide) boarding pass
+   Left: blue logo section · Right: white details + bottom barcode row
+   ═══════════════════════════════════════════════ */
+.ticket-2 {
+  width: 760px;
+  max-width: 100%;
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow:
+    0 20px 60px rgba(10, 30, 70, 0.22),
+    0 4px 12px rgba(10, 30, 70, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.5);
+  background: var(--white);
+  position: relative;
+}
+
+/* Top row: blue left + white right */
+.t2-top {
+  display: flex;
+  min-height: 200px;
+}
+
+/* Perforated divider for ticket-2 */
+.ticket-2 .perf-v {
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 6px,
+    rgba(26, 86, 160, 0.2) 6px,
+    rgba(26, 86, 160, 0.2) 12px
+  );
+  position: relative;
+  z-index: 5;
+  flex-shrink: 0;
+}
+.perf-top-c,
+.perf-bot-c {
+  position: absolute;
+  width: 28px;
+  height: 14px;
+  background: #e8edf5;
+  left: -14px;
+  border: 1px solid rgba(26, 86, 160, 0.15);
+}
+.perf-top-c {
+  top: -1px;
+  border-radius: 0 0 14px 14px;
+  border-top: none;
+}
+.perf-bot-c {
+  bottom: -1px;
+  border-radius: 14px 14px 0 0;
+  border-bottom: none;
+}
+
+.t2-left {
+  flex: 0 0 42%;
+  background: linear-gradient(160deg, var(--blue-mid) 0%, var(--blue-dark) 100%);
+  padding: 30px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.t2-left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 30% 70%,
+    rgba(255, 255, 255, 0.06) 0%,
+    transparent 55%
+  );
+}
+.t2-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+.t2-logo-icon {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+.t2-airline-name {
+  font-family: var(--font-c);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--white);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.t2-right {
+  flex: 0 0 58%;
+  background: var(--white);
+  padding: 24px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+}
+.t2-pax-name {
+  font-family: var(--font-c);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.t2-pax-val {
+  font-family: var(--font-c);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+  margin-top: 3px;
+}
+.t2-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.t2-badge {
+  padding: 5px 18px;
+  border: 2px solid var(--blue);
+  border-radius: 4px;
+  font-family: var(--font-c);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--blue-dark);
+  text-transform: uppercase;
+}
+.t2-bp-title {
+  font-family: var(--font-c);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--blue-dark);
+  text-align: right;
+  line-height: 1.1;
+  margin-top: auto;
+}
+
+/* Bottom barcode row */
+.t2-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px;
+  border-top: 1px solid var(--border);
+  background: var(--off-white);
+}
+.barcode-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.barcode {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+}
+.barcode-bar {
+  background: var(--blue-dark);
+  border-radius: 1px;
+}
+.ticket-no {
+  font-family: var(--font-c);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+.qr-box-lg {
+  width: 68px;
+  height: 68px;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  padding: 5px;
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 1px;
+  background: var(--white);
+}
+.qr-cell-lg {
+  border-radius: 1px;
+  background: transparent;
+}
+.qr-cell-lg.b {
+  background: var(--blue-dark);
+}
+
+/* ── Animation ── */
+.ticket-1,
+.ticket-2 {
+  animation: ticketReveal 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ticket-2 {
+  animation-delay: 0.12s;
+}
+@keyframes ticketReveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.page-label {
+  animation: fadeUp 0.5s 0.3s ease both;
+  opacity: 0;
+}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 800px) {
+  .ticket-1,
+  .ticket-2 {
+    width: 100%;
+  }
+  .t1-route {
+    gap: 0;
+  }
+  .route-iata {
+    font-size: 2rem;
+  }
+  .t1-details {
+    grid-template-columns: 1.2fr 1fr 1fr;
+  }
+  .t1-details .detail-cell:last-child {
+    grid-column: span 3;
+    display: flex;
+    justify-content: center;
+  }
+  .bp-big-val {
+    font-size: 1.5rem;
+  }
+}
+@media (max-width: 540px) {
+  .ticket-1 {
+    flex-direction: column;
+  }
+  .ticket-1::after {
+    display: none;
+  }
+  .ticket-1 .perf-top,
+  .ticket-1 .perf-bot {
+    display: none;
+  }
+  .t1-left,
+  .t1-right {
+    flex: none;
+    width: 100%;
+  }
+  .t2-top {
+    flex-direction: column;
+  }
+  .t2-left,
+  .t2-right {
+    flex: none;
+    width: 100%;
+  }
+  .ticket-2 .perf-v {
+    display: none;
+  }
+  .t1-details {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+}

@@ -9,8 +9,23 @@ const blankPassenger = () => ({
   name:   "",
   gender: "",
   age:    "",
-  seatNo: "",
 });
+
+const SEAT_LETTERS = ["A","B","C","D","E","F"];
+const generateSeatAssignments = (count) => {
+  const used = new Set();
+  const seats = [];
+  while (seats.length < count) {
+    const row = Math.floor(Math.random() * 25) + 10;
+    const letter = SEAT_LETTERS[Math.floor(Math.random() * SEAT_LETTERS.length)];
+    const seat = `${row}${letter}`;
+    if (!used.has(seat)) {
+      used.add(seat);
+      seats.push(seat);
+    }
+  }
+  return seats;
+};
 
 const fareCalculation = (p, price) => p * price;
 function calcArrival(departure, durationMins) {
@@ -140,19 +155,26 @@ export default function BookNow() {
     setPayError("");
 
     try {
-    // Prepare the BookingRequest payload (adjust based on your state)
-    const bookingRequest = {
-      scheduleId: flight.flightId || "your-schedule-id",  // Ensure this is set from flightData
-      noOfSeats: passengers.length,
-      userId:autoUserId,  // Get from auth context or state
-      journeyDate: reservation.journeyDate,
-      passengers: passengers.map(p => ({
-        name: p.name,
-        gender: p.gender,
-        age: p.age,
-        // Add other fields if needed
-      })),
-    };
+      const seatNumbers = generateSeatAssignments(passengers.length);
+      const assignedPassengers = passengers.map((p, idx) => ({
+        ...p,
+        seatNo: p.seatNo || seatNumbers[idx],
+      }));
+      setPassengers(assignedPassengers);
+
+      // Prepare the BookingRequest payload (adjust based on your state)
+      const bookingRequest = {
+        scheduleId: flight.flightId || "your-schedule-id",  // Ensure this is set from flightData
+        noOfSeats: assignedPassengers.length,
+        userId: autoUserId,  // Get from auth context or state
+        journeyDate: reservation.journeyDate,
+        passengers: assignedPassengers.map(p => ({
+          name: p.name,
+          gender: p.gender,
+          age: p.age,
+          seatNo: p.seatNo,
+        })),
+      };
       setPhase("paying");
       setPayMsg("Creating your order...");
 
@@ -235,6 +257,28 @@ export default function BookNow() {
 
   const today     = new Date().toISOString().split("T")[0];
   const totalFare = fareCalculation(passengers.length, price);
+  const seatList  = passengers.map((p) => p.seatNo || "—").join(", ");
+
+  const boardingPassPayload = {
+    flightNumber: ticket?.flightNumber || flight.flightId || flightData.flight?.flightId || "SW-411",
+    passengerName: passengers.map((p) => p.name || "Guest").join(", ") || "Guest",
+    fromCode: flightData.fromCode || flight.source?.slice(0, 3).toUpperCase() || "DXB",
+    toCode: flightData.toCode || flight.destination?.slice(0, 3).toUpperCase() || "CDG",
+    fromCity: flight.source || "Dubai",
+    toCity: flight.destination || "Paris",
+    departureTime: depTime || "22:45",
+    arrivalTime: arrival || "06:30",
+    journeyDate: reservation.journeyDate || ticket?.journeyDate || today,
+    gate: ticket?.gate || "B" + (Math.floor(Math.random() * 20) + 10),
+    terminal: ticket?.terminal || "T3",
+    seatNos: passengers.map((p) => p.seatNo || "—").join(", "),
+    boardingTime: depTime || "22:45",
+    group: flightData.cabinClass?.slice(0, 1).toUpperCase() || "E",
+    classType: flightData.cabinClass || "Economy",
+    reservationId: ticket?.reservationId || autoReservationId,
+    amountPaid: Number(ticket?.totalFare || totalFare),
+    qrSeed: Number(ticket?.reservationId?.slice(-6)) || 42,
+  };
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -603,11 +647,9 @@ export default function BookNow() {
                                 value={p.age} className="field-input"
                                 onChange={(e) => onPassengerChange(p._key, "age", e.target.value)} required />
                             </div>
-                            <div className="field-group">
-                              <label className="field-label">Seat No.</label>
-                              <input type="number" min="1" placeholder="14A"
-                                value={p.seatNo} className="field-input"
-                                onChange={(e) => onPassengerChange(p._key, "seatNo", e.target.value)} required />
+                            <div className="field-group seat-note">
+                              <label className="field-label">Seat Assignment</label>
+                              <div className="seat-info">Seats are assigned automatically after payment, just like a real airline booking.</div>
                             </div>
                           </div>
                         </div>
@@ -729,98 +771,51 @@ export default function BookNow() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════════
-          PHASE: DONE (boarding pass ticket)
+          PHASE: DONE (confirmation only, then navigate to boarding pass)
       ══════════════════════════════════════════════════════════════════════ */}
       {phase === "done" && (
         <div className="done-stage" key="done">
-          <div className="boarding-pass fade-in-up">
-
-            {/* Top section */}
-            <div className="bp-top">
-              <div className="bp-airline">
-                <span className="bp-logo-mark">✦</span>
-                <span className="bp-airline-name">Sky<em>Ways</em></span>
-                <span className="bp-class-badge">{flightData.cabinClass || "Economy"}</span>
+          <div className="confirmation-panel fade-in-up">
+            <div className="confirmation-header">
+              <span className="confirm-status">✓ Booking Confirmed</span>
+              <p>Please verify your booking details below before getting your boarding pass.</p>
+            </div>
+            <div className="confirmation-grid">
+              <div>
+                <span className="confirm-label">Reservation ID</span>
+                <span className="confirm-value">{ticket?.reservationId || autoReservationId}</span>
               </div>
-
-              <div className="bp-route-row">
-                <div className="bp-city-block">
-                  <span className="bp-iata">{flightData.fromCode || "DXB"}</span>
-                  <span className="bp-city-name">{flight.source || "Dubai"}</span>
-                  <span className="bp-time">{flight.departureTime || "22:45"}</span>
-                </div>
-
-                <div className="bp-flight-arc">
-                  <div className="bp-arc-line" />
-                  <svg className="bp-fly-icon" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-                  </svg>
-                  <div className="bp-arc-line" />
-                  <span className="bp-duration">{flight.travelDuration
- || "8h 45m"}</span>
-                </div>
-
-                <div className="bp-city-block right">
-                  <span className="bp-iata">{flightData.toCode || "CDG"}</span>
-                  <span className="bp-city-name">{flight.destination || "Paris"}</span>
-                  <span className="bp-time">{arrival || "06:30"}</span>
-                </div>
+              <div>
+                <span className="confirm-label">Flight</span>
+                <span className="confirm-value">{ticket?.flightNumber || flight.flightId || flightData.flight?.flightId || "SW-411"}</span>
               </div>
-
-              <div className="bp-meta-grid">
-                {[
-                  ["Flight",    ticket?.flightNumber || flight.flightId || "SW-411"],
-                  ["Date",      ticket?.journeyDate  || reservation.journeyDate || "—"],
-                  ["Passengers",ticket?.noOfSeats    || passengers.length],
-                  ["Seat(s)",   passengers.map(p=>p.seatNo||"—").join(", ")],
-                  ["Gate",      "B" + (Math.floor(Math.random()*20)+10)],
-                  ["Terminal",  "T3"],
-                ].map(([l,v]) => (
-                  <div key={l} className="bp-meta-cell">
-                    <span className="bp-meta-label">{l}</span>
-                    <span className="bp-meta-val">{v}</span>
-                  </div>
-                ))}
+              <div>
+                <span className="confirm-label">Date</span>
+                <span className="confirm-value">{reservation.journeyDate || ticket?.journeyDate || today}</span>
+              </div>
+              <div>
+                <span className="confirm-label">Passengers</span>
+                <span className="confirm-value">{ticket?.noOfSeats || passengers.length}</span>
+              </div>
+              <div>
+                <span className="confirm-label">Seats</span>
+                <span className="confirm-value">{seatList}</span>
+              </div>
+              <div>
+                <span className="confirm-label">Amount Paid</span>
+                <span className="confirm-value">₹{Number(ticket?.totalFare || totalFare).toLocaleString("en-IN")}</span>
               </div>
             </div>
-
-            {/* Tear perforation */}
-            <div className="bp-tear">
-              <div className="bp-tear-line" />
-              {[...Array(28)].map((_,i) => (
-                <div key={i} className="bp-hole" style={{ left: `${3.4 * i + 1.5}%` }} />
-              ))}
-            </div>
-
-            {/* Bottom stub */}
-            <div className="bp-bottom">
-              <div className="bp-stub-info">
-                <div className="bp-res-id">
-                  <span className="bp-res-label">Reservation ID</span>
-                  <span className="bp-res-val">{ticket?.reservationId || autoReservationId}</span>
-                </div>
-                <div className="bp-amount">
-                  <span className="bp-res-label">Amount Paid</span>
-                  <span className="bp-amount-val">
-                    ₹{Number(ticket?.totalFare || totalFare).toLocaleString("en-IN")}
-                  </span>
-                </div>
-              </div>
-
-              <div className="bp-qr-wrap">
-                <QRMock />
-                <span className="bp-qr-label">Scan at gate</span>
-              </div>
-            </div>
-
-            {/* Confirmation note */}
-            <div className="bp-email-note">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
-              </svg>
-              Confirmation sent to your registered email address
-            </div>
-
+          </div>
+          <div className="action-buttons fade-in-up">
+            <button className="btn-boarding-pass" onClick={() => navigate("/boarding-pass", { state: boardingPassPayload })}>
+              Get Your Boarding Pass
+              <span className="arrow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </span>
+            </button>
             <button className="btn-new-booking" onClick={handleReset}>
               Book Another Flight
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

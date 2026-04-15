@@ -1219,6 +1219,78 @@
 }
 .bp-email-note svg { color: var(--gold); flex-shrink:0; }
 
+.seat-info {
+  font-size: 0.82rem;
+  color: var(--white-60);
+  line-height: 1.5;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+.confirmation-panel {
+  width: min(100%, 920px);
+  margin: 0 auto 1.8rem;
+  padding: 1.6rem 1.8rem;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 22px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.18);
+}
+
+.confirmation-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.4rem;
+}
+
+.confirm-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.confirmation-header p {
+  color: var(--white-60);
+  max-width: 780px;
+  line-height: 1.6;
+}
+
+.confirmation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.confirmation-grid div {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 1rem 1rem;
+}
+
+.confirm-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--white-40);
+  margin-bottom: 0.45rem;
+}
+
+.confirm-value {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--white);
+}
+
 /* New booking button */
 .btn-new-booking {
   display: flex; align-items: center; justify-content: center; gap: .5rem;
@@ -1284,4 +1356,68 @@
   .fsc-route { flex-direction: column; gap: .8rem; text-align: center; }
   .fsc-city.right { text-align: center; }
   .fsc-flight-line { transform: rotate(90deg); margin: .5rem auto; }
+}
+.btn-boarding-pass {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 26px;
+  font-family: var(--font-c);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+
+  color: #fff;
+  background: linear-gradient(135deg, #1D62B8, #123F7A);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  overflow: hidden;
+
+  box-shadow: 0 10px 25px rgba(13, 47, 94, 0.25);
+  transition: all 0.35s cubic-bezier(.22,1,.36,1);
+}
+
+/* Hover lift + glow */
+.btn-boarding-pass:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 18px 40px rgba(13, 47, 94, 0.35);
+}
+
+/* Click press */
+.btn-boarding-pass:active {
+  transform: scale(0.96);
+}
+
+/* Shine animation */
+.btn-boarding-pass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -120%;
+  width: 120%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,255,255,0.4),
+    transparent
+  );
+  transition: all 0.6s;
+}
+
+.btn-boarding-pass:hover::before {
+  left: 120%;
+}
+
+/* Arrow animation */
+.btn-boarding-pass .arrow {
+  display: flex;
+  transition: transform 0.3s ease;
+}
+
+.btn-boarding-pass:hover .arrow {
+  transform: translateX(6px);
 }
