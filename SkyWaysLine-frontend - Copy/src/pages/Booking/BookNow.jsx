@@ -1,17 +1,29 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "./BookNow.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-// ── Blank passenger ──────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────────
+const SEAT_LETTERS = ["A","B","C","D","E","F"];
+
+const STARS = Array.from({ length: 80 }, (_, i) => ({
+  id: i,
+  x: Math.random() * 100,
+  y: Math.random() * 100,
+  r: Math.random() * 1.4 + 0.4,
+  delay: Math.random() * 4,
+  dur: Math.random() * 3 + 2,
+}));
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 const blankPassenger = () => ({
-  _key:   Math.random().toString(36).slice(2),
-  name:   "",
+  _key: Math.random().toString(36).slice(2),
+  name: "",
   gender: "",
-  age:    "",
+  age: "",
+  seatNo: "",
 });
 
-const SEAT_LETTERS = ["A","B","C","D","E","F"];
 const generateSeatAssignments = (count) => {
   const used = new Set();
   const seats = [];
@@ -19,205 +31,310 @@ const generateSeatAssignments = (count) => {
     const row = Math.floor(Math.random() * 25) + 10;
     const letter = SEAT_LETTERS[Math.floor(Math.random() * SEAT_LETTERS.length)];
     const seat = `${row}${letter}`;
-    if (!used.has(seat)) {
-      used.add(seat);
-      seats.push(seat);
-    }
+    if (!used.has(seat)) { used.add(seat); seats.push(seat); }
   }
   return seats;
 };
 
 const fareCalculation = (p, price) => p * price;
+
 function calcArrival(departure, durationMins) {
-
-  if (!departure || !durationMins) return "--:--";  // ✅ FIX
-
+  if (!departure || !durationMins) return "--:--";
   const [h, m] = departure.split(":").map(Number);
   const total  = h * 60 + m + Number(durationMins);
-
   const ah = Math.floor(total / 60) % 24;
   const am = total % 60;
-
-  return `${String(ah).padStart(2, "0")}:${String(am).padStart(2, "0")}`;
+  return `${String(ah).padStart(2,"0")}:${String(am).padStart(2,"0")}`;
 }
-// ── Star field data ──────────────────────────────────────────────────────────
-const STARS = Array.from({ length: 120 }, (_, i) => ({
-  id:    i,
-  x:     Math.random() * 100,
-  y:     Math.random() * 100,
-  r:     Math.random() * 1.8 + 0.4,
-  delay: Math.random() * 4,
-  dur:   Math.random() * 3 + 2,
-}));
 
-// ── Crack SVG paths ──────────────────────────────────────────────────────────
-const CRACKS = [
-  "M50,50 L15,10 L8,2",
-  "M50,50 L82,8 L92,1",
-  "M50,50 L95,45 L100,40",
-  "M50,50 L88,80 L95,95",
-  "M50,50 L60,92 L58,100",
-  "M50,50 L35,88 L30,100",
-  "M50,50 L5,60 L0,70",
-  "M50,50 L10,30 L0,20",
-];
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 function getStepClass(msg, idx) {
   const m = msg.toLowerCase();
-  const done  = (i) => i < idx;
-  const steps = ["order","process","verif","confirm"];
+  const steps = ["order", "process", "verif", "confirm"];
   const active = steps.findIndex((s) => m.includes(s));
-  if (active === idx) return "step-active";
-  if (idx < active)  return "step-done";
+  if (active === idx) return "s-active";
+  if (idx < active)  return "s-done";
   return "";
 }
 
-// ── Boarding-pass QR mock ────────────────────────────────────────────────────
-function QRMock() {
-  const cells = Array.from({ length: 10 * 10 }, () => Math.random() > 0.5);
+// ── Plane SVG ─────────────────────────────────────────────────────────────────
+const PlaneSVG = ({ width = 280 }) => (
+  <svg width={width} viewBox="0 0 420 160" fill="none">
+    <path d="M40 80 Q100 68 240 76 Q310 80 380 76 Q408 78 380 82 Q310 86 240 84 Q100 92 40 82 Z" fill="#DBEAFE"/>
+    <path d="M375 76 Q418 79 375 82 Z" fill="#BFDBFE"/>
+    <ellipse cx="360" cy="79" rx="10" ry="5.5" fill="#60A5FA" opacity=".85"/>
+    <ellipse cx="346" cy="79" rx="7"  ry="4.5" fill="#93C5FD" opacity=".65"/>
+    <path d="M200 78 L175 22 L275 70 Z" fill="#BFDBFE"/>
+    <path d="M200 82 L175 138 L275 90 Z" fill="#93C5FD"/>
+    <path d="M68 77 L45 32 L95 72 Z" fill="#BFDBFE"/>
+    <path d="M68 83 L45 128 L95 88 Z" fill="#93C5FD"/>
+    {[140,158,176,194,212,230,248,266,284].map((x,i) => (
+      <rect key={i} x={x} y="73" width="10" height="8" rx="2.5"
+        fill="#3B82F6" opacity={0.6 - i * 0.04}/>
+    ))}
+    <ellipse cx="238" cy="108" rx="22" ry="11" fill="#93C5FD"/>
+    <ellipse cx="238" cy="108" rx="17" ry="7.5" fill="#60A5FA"/>
+    <ellipse cx="218" cy="108" rx="5"  ry="5"   fill="#2563EB" opacity=".6"/>
+    <ellipse cx="195" cy="52"  rx="18" ry="9"   fill="#93C5FD"/>
+    <ellipse cx="195" cy="52"  rx="13" ry="6"   fill="#60A5FA"/>
+    <ellipse cx="179" cy="52"  rx="4"  ry="4"   fill="#2563EB" opacity=".5"/>
+    <path d="M95 78.5 Q240 75 378 79 L378 80.5 Q240 77 95 80 Z" fill="#2563EB" opacity=".6"/>
+    {[68,73,79,84,89].map((y,i) => (
+      <line key={i} x1="0" y1={y} x2="40" y2={y}
+        stroke="#2563EB" strokeWidth={2.5-i*0.4} opacity={0.15-i*0.02}/>
+    ))}
+  </svg>
+);
+
+const PlaneIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+    <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+  </svg>
+);
+
+const SmallPlane = ({ size = 40 }) => (
+  <svg width={size} viewBox="0 0 200 80" fill="none">
+    <path d="M20 40 Q50 34 115 38 Q145 40 175 38 Q192 40 175 42 Q145 44 115 42 Q50 46 20 42 Z" fill="#DBEAFE"/>
+    <path d="M95 39 L80 12 L130 35 Z" fill="#BFDBFE"/>
+    <path d="M95 41 L80 68 L130 45 Z" fill="#93C5FD"/>
+    <path d="M35 39 L22 16 L48 36 Z" fill="#BFDBFE"/>
+    {[65,76,87,98,109].map((x,j) => (
+      <rect key={j} x={x} y="37" width="6" height="5" rx="1.5" fill="#3B82F6" opacity={0.7-j*0.08}/>
+    ))}
+    <path d="M88 39.5 Q140 38 172 40 L172 40.5 Q140 38.5 88 40 Z" fill="#2563EB" opacity=".7"/>
+  </svg>
+);
+
+// ── Animated Button ───────────────────────────────────────────────────────────
+function AnimBtn({ children, className = "", onClick, disabled, type = "button", style }) {
+  const [flipping, setFlipping] = useState(false);
+
+  const handleClick = (e) => {
+    if (disabled) return;
+    setFlipping(true);
+    setTimeout(() => setFlipping(false), 500);
+    onClick && onClick(e);
+  };
+
   return (
-    <div className="qr-grid">
-      {cells.map((on, i) => (
-        <div key={i} className={`qr-cell ${on ? "on" : ""}`} />
-      ))}
+    <button
+      type={type}
+      className={`btn ${className} ${flipping ? "flipping" : ""}`}
+      onClick={handleClick}
+      disabled={disabled}
+      style={style}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Step Indicator ────────────────────────────────────────────────────────────
+const STEPS = ["Trip Details", "Passengers", "Review", "Payment"];
+
+function StepRunway({ current }) {
+  return (
+    <div className="step-runway">
+      <div className="step-runway-inner">
+        {STEPS.map((label, i) => (
+          <div key={i} style={{ display:"flex", alignItems:"center" }}>
+            <div className={`step-pill ${i === current ? "active" : i < current ? "done" : ""}`}>
+              <div className="step-num">
+                {i < current ? (
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                ) : i + 1}
+              </div>
+              <span>{label}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <span className="step-arrow">›</span>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════════════════
+// ── Flight Summary Sidebar ────────────────────────────────────────────────────
+function FlightSummary({ flight, flightData, passengers, price, depTime, arrival }) {
+  const totalFare = fareCalculation(passengers.length, price);
+
+  return (
+    <aside className="fsc">
+      <div className="fsc-card">
+        <p className="fsc-eyebrow">✦ Your Flight</p>
+
+        <div className="fsc-route">
+          <div className="fsc-city">
+            <span className="fsc-iata">{flight.source?.slice(0,3).toUpperCase() || "BOM"}</span>
+            <span className="fsc-name">{flight.source || "Mumbai"}</span>
+          </div>
+          <div className="fsc-mid">
+            <div className="fsc-line-h" />
+            <div className="fsc-plane-sm"><PlaneIcon size={16} /></div>
+            <div className="fsc-line-h" />
+            <span className="fsc-dur">{flight.travelDuration || "--"}</span>
+          </div>
+          <div className="fsc-city" style={{ textAlign:"right" }}>
+            <span className="fsc-iata">{flight.destination?.slice(0,3).toUpperCase() || "JFK"}</span>
+            <span className="fsc-name">{flight.destination || "New York"}</span>
+          </div>
+        </div>
+
+        <div className="fsc-rows">
+          {[
+            ["Flight",    flightData.flight?.flightId || "SW-411"],
+            ["Aircraft",  flightData.flight?.flightName || "Boeing 777"],
+            ["Departs",   depTime || "22:45"],
+            ["Arrives",   arrival || "--:--"],
+            ["Duration",  flight.travelDuration || "--"],
+            ["Class",     flightData.cabinClass || "Economy"],
+          ].map(([l, v]) => (
+            <div key={l} className="fsc-row">
+              <span className="fsc-label">{l}</span>
+              <span className="fsc-val">{v}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="fsc-fare">
+          <div className="fsc-fare-row">
+            <span>{passengers.length} × ₹{price.toLocaleString("en-IN")}</span>
+            <span>₹{totalFare.toLocaleString("en-IN")}</span>
+          </div>
+          <div className="fsc-fare-row" style={{ color:"var(--slate-light)", fontSize:".76rem" }}>
+            <span>Taxes & Fees</span>
+            <span>Incl.</span>
+          </div>
+          <div className="fsc-fare-total">
+            <span>Total</span>
+            <span className="fsc-total-amt">₹{totalFare.toLocaleString("en-IN")}</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
 export default function BookNow() {
-  const location  = useLocation();
-  const navigate  = useNavigate();
+  const location   = useLocation();
+  const navigate   = useNavigate();
   const flightData = location.state || {};
-  const flight=flightData.flight || {};
-  console.log("Flight data in BookNow:", flightData);
+  const flight     = flightData.flight || {};
+
   const autoReservationId = flightData.reservationId || "RES-" + Date.now();
-  const autoUserId        = flightData.userId        || "USR-001";
-  const autoScheduleId    = flightData.flight?.flightId || "SC-001";
+  const autoUserId        = flightData.userId || "USR-001";
   const price             = flightData.totalFare || 0;
-  const depTime = flight.departureTime?.slice(0, 5);
-  const arrival = calcArrival(depTime, flight.travelDuration);
+  const depTime           = flight.departureTime?.slice(0, 5);
+  const arrival           = calcArrival(depTime, flight.travelDuration);
 
-
-  // Phases: flying → form → paying → planes-success → done
+  // Phases: flying → form → paying → success → done
   const [phase,    setPhase]    = useState("flying");
   const [saving,   setSaving]   = useState(false);
   const [payMsg,   setPayMsg]   = useState("Initiating Payment...");
   const [ticket,   setTicket]   = useState(null);
   const [payError, setPayError] = useState("");
-  const [formStep, setFormStep] = useState(0); // 0=details, 1=passengers
+
+  // Step within form (0–3)
+  const [formStep, setFormStep] = useState(0);
+  const [flipDir,  setFlipDir]  = useState("forward"); // for animation class
 
   const [reservation, setReservation] = useState({
     reservationType: "",
-    journeyDate:     "",
-    noOfSeats:       1,
-    totalFare:       "",
-    bookingStatus:   1,
+    journeyDate: "",
   });
   const [passengers, setPassengers] = useState([blankPassenger()]);
 
-  // Auto-advance intro → form
+  const totalFare = fareCalculation(passengers.length, price);
+  const today     = new Date().toISOString().split("T")[0];
+
+  // Auto-advance intro
   useEffect(() => {
     if (phase !== "flying") return;
     const t = setTimeout(() => setPhase("form"), 2600);
     return () => clearTimeout(t);
   }, [phase]);
 
-  // ── Field handlers ────────────────────────────────────────────────────────
+  // Step navigation with flip direction
+  const goToStep = (next) => {
+    setFlipDir(next > formStep ? "forward" : "back");
+    setFormStep(next);
+  };
+
+  // Field handlers
   const onResChange = (e) =>
     setReservation({ ...reservation, [e.target.name]: e.target.value });
 
   const addPassenger = () => {
     const next = [...passengers, blankPassenger()];
     setPassengers(next);
-    setReservation((r) => ({ ...r, noOfSeats: next.length }));
   };
 
   const removePassenger = (key) => {
     if (passengers.length === 1) return;
-    const next = passengers.filter((p) => p._key !== key);
-    setPassengers(next);
-    setReservation((r) => ({ ...r, noOfSeats: next.length }));
+    setPassengers(passengers.filter((p) => p._key !== key));
   };
 
-  const onPassengerChange = (key, field, value) =>
-    setPassengers(passengers.map((p) =>
-      p._key === key ? { ...p, [field]: value } : p
-    ));
- 
-  // ── SUBMIT → payment flow ─────────────────────────────────────────────────
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onPaxChange = (key, field, val) =>
+    setPassengers(passengers.map((p) => p._key === key ? { ...p, [field]: val } : p));
+
+  // Submit / payment
+  const handleSubmit = async () => {
     setSaving(true);
     setPayError("");
 
     try {
       const seatNumbers = generateSeatAssignments(passengers.length);
-      const assignedPassengers = passengers.map((p, idx) => ({
+      const assignedPax = passengers.map((p, i) => ({
         ...p,
-        seatNo: p.seatNo || seatNumbers[idx],
+        seatNo: p.seatNo || seatNumbers[i],
       }));
-      setPassengers(assignedPassengers);
+      setPassengers(assignedPax);
 
-      // Prepare the BookingRequest payload (adjust based on your state)
       const bookingRequest = {
-        scheduleId: flight.flightId || "your-schedule-id",  // Ensure this is set from flightData
-        noOfSeats: assignedPassengers.length,
-        userId: autoUserId,  // Get from auth context or state
+        scheduleId:  flight.flightId || "SC-001",
+        noOfSeats:   assignedPax.length,
+        userId:      autoUserId,
         journeyDate: reservation.journeyDate,
-        passengers: assignedPassengers.map(p => ({
-          name: p.name,
-          gender: p.gender,
-          age: p.age,
-          seatNo: p.seatNo,
-        })),
+        passengers:  assignedPax.map(({ name, gender, age, seatNo }) => ({ name, gender, age, seatNo })),
       };
+
       setPhase("paying");
       setPayMsg("Creating your order...");
 
-      const orderRes = await axios.post(
-        "http://localhost:8090/api/booking/create-order",
-        bookingRequest,
-      );
+      const orderRes = await axios.post("http://localhost:8090/api/booking/create-order", bookingRequest);
       const orderId = orderRes.data.data;
-      console.log("Received orderId:", orderId);
+
       setPayMsg("Processing payment...");
-      
+
       const options = {
-       key:         "rzp_test_SdKfg1SHSyvaok",
-  amount: totalFare * 100,
-    currency: "INR",
-    order_id: orderId,
-    name: "SkyWays Airline",
-    description: "Flight booking",
-    prefill: {
-      name: passengers[0]?.name || "",
-      email: "user@example.com",
-    },
-        handler: async function (response) {
+        key:         "rzp_test_SdKfg1SHSyvaok",
+        amount:      totalFare * 100,
+        currency:    "INR",
+        order_id:    orderId,
+        name:        "SkyWays Airlines",
+        description: "Flight Booking",
+        prefill:     { name: passengers[0]?.name || "", email: "user@example.com" },
+        handler: async (response) => {
           try {
             setPayMsg("Verifying payment...");
             await delay(700);
-            console.log("Payment processing");
-            const confirmRes = await axios.post(
-              "http://localhost:8090/api/booking/confirm",
-              {
-                orderId:response.razorpay_order_id,
-                paymentId: response.razorpay_payment_id,
-                signature: response.razorpay_signature,
-                bookingRequest,
-              },
-            );
-            console.log("Booking confirmation response:", confirmRes.data);
+            const confirmRes = await axios.post("http://localhost:8090/api/booking/confirm", {
+              orderId:   response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              bookingRequest,
+            });
             setTicket(confirmRes.data.data);
             setPayMsg("Booking Confirmed! ✓");
             await delay(600);
-            setPhase("planes-success");
+            setPhase("success");
             setTimeout(() => setPhase("done"), 2400);
-
           } catch {
             setPayError("Payment verification failed. Please try again.");
             setPhase("form");
@@ -225,12 +342,8 @@ export default function BookNow() {
             setSaving(false);
           }
         },
-
         modal: {
-          ondismiss: () => {
-            setSaving(false);
-            setPhase("form");
-          },
+          ondismiss: () => { setSaving(false); setPhase("form"); },
         },
       };
 
@@ -244,297 +357,138 @@ export default function BookNow() {
     }
   };
 
-  // ── Reset ─────────────────────────────────────────────────────────────────
   const handleReset = () => {
     setPhase("flying");
     setSaving(false);
     setPayError("");
     setTicket(null);
     setFormStep(0);
-    setReservation({ reservationType:"", journeyDate:"", noOfSeats:1, totalFare:"", bookingStatus:1 });
+    setReservation({ reservationType: "", journeyDate: "" });
     setPassengers([blankPassenger()]);
   };
 
-  const today     = new Date().toISOString().split("T")[0];
-  const totalFare = fareCalculation(passengers.length, price);
-  const seatList  = passengers.map((p) => p.seatNo || "—").join(", ");
+  const seatList = passengers.map((p) => p.seatNo || "—").join(", ");
 
   const boardingPassPayload = {
-    flightNumber: ticket?.flightNumber || flight.flightId || flightData.flight?.flightId || "SW-411",
-    passengerName: passengers.map((p) => p.name || "Guest").join(", ") || "Guest",
-    fromCode: flightData.fromCode || flight.source?.slice(0, 3).toUpperCase() || "DXB",
-    toCode: flightData.toCode || flight.destination?.slice(0, 3).toUpperCase() || "CDG",
-    fromCity: flight.source || "Dubai",
-    toCity: flight.destination || "Paris",
-    departureTime: depTime || "22:45",
-    arrivalTime: arrival || "06:30",
-    journeyDate: reservation.journeyDate || ticket?.journeyDate || today,
-    gate: ticket?.gate || "B" + (Math.floor(Math.random() * 20) + 10),
-    terminal: ticket?.terminal || "T3",
-    seatNos: passengers.map((p) => p.seatNo || "—").join(", "),
-    boardingTime: depTime || "22:45",
-    group: flightData.cabinClass?.slice(0, 1).toUpperCase() || "E",
-    classType: flightData.cabinClass || "Economy",
+    flightNumber:  ticket?.flightNumber || flight.flightId || "SW-411",
+    passengerName: passengers.map((p) => p.name || "Guest").join(", "),
+    fromCode:      flightData.fromCode || flight.source?.slice(0,3).toUpperCase() || "BOM",
+    toCode:        flightData.toCode   || flight.destination?.slice(0,3).toUpperCase() || "JFK",
+    fromCity:      flight.source       || "Mumbai",
+    toCity:        flight.destination  || "New York",
+    departureTime: depTime  || "22:45",
+    arrivalTime:   arrival  || "06:30",
+    journeyDate:   reservation.journeyDate || ticket?.journeyDate || today,
+    gate:          ticket?.gate     || "B" + (Math.floor(Math.random() * 20) + 10),
+    terminal:      ticket?.terminal || "T3",
+    seatNos:       passengers.map((p) => p.seatNo || "—").join(", "),
+    boardingTime:  depTime || "22:45",
+    group:         flightData.cabinClass?.slice(0,1).toUpperCase() || "E",
+    classType:     flightData.cabinClass || "Economy",
     reservationId: ticket?.reservationId || autoReservationId,
-    amountPaid: Number(ticket?.totalFare || totalFare),
-    qrSeed: Number(ticket?.reservationId?.slice(-6)) || 42,
+    amountPaid:    Number(ticket?.totalFare || totalFare),
+    qrSeed:        Number(ticket?.reservationId?.slice(-6)) || 42,
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // Step validation
+  const step0Valid = reservation.reservationType && reservation.journeyDate;
+  const step1Valid = passengers.every((p) => p.name && p.gender && p.age);
+
+  // Panel animation class
+  const panelClass = `step-panel ${flipDir === "forward" ? "flip-enter" : "flip-enter-back"}`;
+
   return (
     <div className="bn-wrap">
 
-      {/* ── Animated starfield background ── */}
-      <div className="bn-sky">
-        <svg className="star-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
-          {STARS.map(s => (
-            <circle
-              key={s.id}
-              cx={s.x} cy={s.y} r={s.r * 0.12}
-              fill="white"
-              style={{
-                animationDelay: `${s.delay}s`,
-                animationDuration: `${s.dur}s`,
-              }}
-              className="star-dot"
-            />
-          ))}
-        </svg>
-        {/* Horizon aurora */}
-        <div className="aurora" />
-        {/* Drifting clouds */}
-        <div className="cloud-layer">
-          {[1,2,3,4].map(i => <div key={i} className={`cloud cl${i}`} />)}
-        </div>
+      {/* Background */}
+      <div className="bn-bg">
+        <div className="bn-cloud bn-cloud-1" />
+        <div className="bn-cloud bn-cloud-2" />
+        <div className="bn-cloud bn-cloud-3" />
       </div>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          PHASE: FLYING (cinematic intro)
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ PHASE: FLYING ══════════════════════════════════════════════════════ */}
       {phase === "flying" && (
-        <div className="fly-stage" key="fly">
-
-          {/* Screen crack SVG */}
-          <svg className="crack-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-            {CRACKS.map((d, i) => (
-              <path key={i} d={d} className={`crack c${i+1}`} />
-            ))}
-          </svg>
-
-          {/* Glass shards */}
-          <div className="shards">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className={`shard sh${i+1}`} />
-            ))}
+        <div className="fly-stage">
+          <div className="fly-plane-wrap">
+            <PlaneSVG width={320} />
           </div>
-
-          {/* Shockwave ring */}
-          <div className="shockwave-ring" />
-          <div className="shockwave-ring sw2" />
-
-          {/* Main SVG airplane */}
-          <div className="intro-plane-wrap">
-            <svg className="intro-plane" viewBox="0 0 420 160" fill="none">
-              {/* Fuselage */}
-              <path d="M40 80 Q100 68 240 76 Q310 80 380 76 Q408 78 380 82 Q310 86 240 84 Q100 92 40 82 Z" fill="#E8EAEE"/>
-              {/* Nose cone */}
-              <path d="M375 76 Q418 79 375 82 Z" fill="#C5C8CE"/>
-              {/* Cockpit */}
-              <ellipse cx="360" cy="79" rx="10" ry="5.5" fill="#5AABFF" opacity=".85"/>
-              <ellipse cx="346" cy="79" rx="7"  ry="4.5" fill="#5AABFF" opacity=".65"/>
-              {/* Main wing */}
-              <path d="M200 78 L175 22 L275 70 Z" fill="#D0D4DA"/>
-              <path d="M200 82 L175 138 L275 90 Z" fill="#C5C8CE"/>
-              {/* Tail fin */}
-              <path d="M68 77 L45 32 L95 72 Z" fill="#C8CBD1"/>
-              <path d="M68 83 L45 128 L95 88 Z" fill="#BFC2C8"/>
-              {/* Windows */}
-              {[140,158,176,194,212,230,248,266,284].map((x,i) => (
-                <rect key={i} x={x} y="73" width="10" height="8" rx="2.5"
-                  fill="#5AABFF" opacity={0.75 - i*0.05}/>
-              ))}
-              {/* Engine 1 */}
-              <ellipse cx="238" cy="108" rx="22" ry="11" fill="#B2B6BC"/>
-              <ellipse cx="238" cy="108" rx="17" ry="7.5" fill="#9EA2A8"/>
-              <ellipse cx="218" cy="108" rx="5" ry="5" fill="#FF7A30" opacity=".75"/>
-              {/* Engine 2 */}
-              <ellipse cx="195" cy="52" rx="18" ry="9" fill="#B2B6BC"/>
-              <ellipse cx="195" cy="52" rx="13" ry="6" fill="#9EA2A8"/>
-              <ellipse cx="179" cy="52" rx="4" ry="4" fill="#FF7A30" opacity=".65"/>
-              {/* Gold livery stripe */}
-              <path d="M95 78.5 Q240 75 378 79 L378 80.5 Q240 77 95 80 Z" fill="#C9A84C" opacity=".9"/>
-              {/* Motion blur streaks */}
-              {[68,73,79,84,89].map((y,i) => (
-                <line key={i} x1="0" y1={y} x2="40" y2={y}
-                  stroke="white" strokeWidth={2.5 - i*0.4}
-                  opacity={0.25 - i*0.03}/>
-              ))}
-              {/* Engine glow trails */}
-              <path d="M218 108 L0 115 L0 101 Z" fill="url(#trailGrad1)" opacity=".25"/>
-              <path d="M179 52 L0 58 L0 46 Z" fill="url(#trailGrad2)" opacity=".2"/>
-              <defs>
-                <linearGradient id="trailGrad1" x1="218" x2="0" y1="0" y2="0" gradientUnits="userSpaceOnUse">
-                  <stop offset="0" stopColor="#FF7A30" stopOpacity="0"/>
-                  <stop offset="1" stopColor="#FF7A30" stopOpacity="1"/>
-                </linearGradient>
-                <linearGradient id="trailGrad2" x1="0" x2="179" y1="0" y2="0" gradientUnits="userSpaceOnUse">
-                  <stop offset="0" stopColor="#FF7A30" stopOpacity="0"/>
-                  <stop offset="1" stopColor="#FF7A30" stopOpacity="1"/>
-                </linearGradient>
-              </defs>
-            </svg>
-            {/* Light cone from engines */}
-            <div className="engine-glow" />
+          <div className="fly-brand">
+            <div style={{ fontFamily:"var(--font-d)", fontSize:"3rem", fontWeight:800, color:"var(--blue-dark)", letterSpacing:"-.02em" }}>
+              Sky<em style={{ color:"var(--blue)", fontStyle:"normal" }}>Ways</em>
+            </div>
+            <span style={{ fontSize:".78rem", letterSpacing:".35em", textTransform:"uppercase", color:"var(--slate)" }}>
+              Premium Air Travel
+            </span>
           </div>
-
-          {/* Brand lockup */}
-          <div className="intro-brand">
-            <span className="intro-logo-mark">✦</span>
-            <span className="intro-logo-text">Sky<em>Ways</em></span>
-            <span className="intro-tagline">Premium Air Travel</span>
-          </div>
-
-          {/* Progress bar */}
-          <div className="intro-progress">
-            <div className="intro-progress-fill" />
+          <div className="fly-progress">
+            <div className="fly-progress-bar" />
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          PHASE: BOOKING FORM
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ PHASE: FORM ════════════════════════════════════════════════════════ */}
       {phase === "form" && (
-        <div className="form-stage" key="form">
+        <div className="form-stage">
 
-          {/* Top nav bar */}
+          {/* Nav */}
           <header className="form-nav">
             <div className="nav-logo">
-              <span className="nav-logo-icon">✦</span>
+              <span className="nav-logo-mark">✦</span>
               Sky<em>Ways</em>
             </div>
             <div className="nav-route">
-              <span className="nav-route-city">{flightData.from || "—"}</span>
-              <svg width="40" height="12" viewBox="0 0 40 12" className="nav-route-arrow">
-                <path d="M0 6 H32 M28 2 L36 6 L28 10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-              </svg>
-              <span className="nav-route-city">{flightData.to || "—"}</span>
+              <span>{flight.source?.slice(0,3).toUpperCase() || flightData.from || "—"}</span>
+              <span className="nav-route-divider">›</span>
+              <span>{flight.destination?.slice(0,3).toUpperCase() || flightData.to || "—"}</span>
             </div>
             <div className="nav-secure">
-              <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
-                <path d="M6 0L12 3V7C12 10.3 9.3 13.3 6 14 2.7 13.3 0 10.3 0 7V3L6 0Z" fill="#C9A84C" opacity=".25"/>
-                <path d="M6 1L11 3.5V7C11 9.8 8.8 12.5 6 13.2 3.2 12.5 1 9.8 1 7V3.5L6 1Z" stroke="#C9A84C" strokeWidth="1" fill="none"/>
-              </svg>
-              Secured
+              <div className="nav-secure-dot" />
+              SSL Secured
             </div>
           </header>
 
-          {/* Error banner */}
+          {/* Error */}
           {payError && (
             <div className="error-banner">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
               </svg>
               {payError}
-              <button onClick={() => setPayError("")} className="err-close">✕</button>
+              <button className="err-close" onClick={() => setPayError("")}>✕</button>
             </div>
           )}
 
+          {/* Step runway */}
+          <StepRunway current={formStep} />
+
           <div className="form-body">
 
-            {/* Left column — flight summary card */}
-            <aside className="flight-summary-card">
-              <div className="fsc-header">
-                <p className="fsc-eyebrow">Your Flight</p>
-                <div className="fsc-route">
-                  <div className="fsc-city">
-                    <span className="fsc-iata">
-  {flight.source?.slice(0, 3).toUpperCase() || "CDG"}
-</span>
-                    <span className="fsc-name">{flight.source || "Dubai"}</span>
-                  </div>
-                  <div className="fsc-flight-line">
-                    <div className="fsc-line" />
-                    <svg className="fsc-plane-icon" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-                    </svg>
-                    <div className="fsc-line" />
-                  </div>
-                  <div className="fsc-city">
-                    <span className="fsc-iata">
-  {flight.destination?.slice(0, 3).toUpperCase() || "CDG"}
-</span>
-                    <span className="fsc-name">{flight.destination || "Paris"}</span>
-                  </div>
-                </div>
-              </div>
+            {/* Sidebar */}
+            <FlightSummary
+              flight={flight}
+              flightData={flightData}
+              passengers={passengers}
+              price={price}
+              depTime={depTime}
+              arrival={arrival}
+            />
 
-              <div className="fsc-details">
-                {[
-                  ["Flight",    flightData.flight?.flightId || "SW-411"],
-                  ["Aircraft",  flightData.flight?.flightName || "Boeing 777"],
-                  ["Departs",   depTime || "22:45"],
-                  ["Arrives",   arrival   || "06:30 +1"],
-                  ["Duration",  flight.travelDuration       || "8h 45m"],
-                  ["Class",     flightData.cabinClass     || "Economy"],
-                ].map(([label, val]) => (
-                  <div key={label} className="fsc-row">
-                    <span className="fsc-label">{label}</span>
-                    <span className="fsc-val">{val}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="fsc-fare-box">
-                <div className="fsc-fare-row">
-                  <span>{passengers.length} × ₹{price.toLocaleString("en-IN")}</span>
-                  <span>₹{totalFare.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="fsc-fare-row fsc-taxes">
-                  <span>Taxes & Fees</span>
-                  <span>Incl.</span>
-                </div>
-                <div className="fsc-fare-total">
-                  <span>Total</span>
-                  <span className="fsc-total-amount">₹{totalFare.toLocaleString("en-IN")}</span>
-                </div>
-              </div>
-
-              {/* IDs */}
-      
-            </aside>
-
-            {/* Right column — form */}
-            <main className="form-main">
-
-              {/* Step indicator */}
-              <div className="step-bar">
-                {["Trip Details", "Passengers", "Payment"].map((label, i) => (
-                  <div key={i} className={`step-item ${i === formStep ? "active" : i < formStep ? "done" : ""}`}>
-                    <div className="step-bubble">
-                      {i < formStep ? (
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                          <polyline points="20 6 9 17 4 12"/>
-                        </svg>
-                      ) : i + 1}
-                    </div>
-                    <span>{label}</span>
-                    {i < 2 && <div className={`step-connector ${i < formStep ? "filled" : ""}`} />}
-                  </div>
-                ))}
-              </div>
-
-              <form onSubmit={handleSubmit} noValidate>
+            {/* Main content — flip panels */}
+            <main>
+              <div className="flip-container">
 
                 {/* ── STEP 0: Trip Details ── */}
                 {formStep === 0 && (
-                  <div className="form-section fade-in-up">
-                    <h2 className="section-heading">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                      </svg>
+                  <div className={panelClass}>
+                    <div className="sec-head">
+                      <div className="sec-head-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                      </div>
                       Trip Details
-                    </h2>
+                    </div>
 
                     <div className="fields-grid">
                       <div className="field-group">
@@ -559,13 +513,13 @@ export default function BookNow() {
 
                       <div className="field-group readonly-group">
                         <label className="field-label">Seats</label>
-                        <input type="number" readOnly value={passengers.length}
+                        <input type="text" readOnly value={`${passengers.length} passenger${passengers.length > 1 ? "s" : ""}`}
                           className="field-input readonly" />
                         <span className="readonly-badge">Auto</span>
                       </div>
 
                       <div className="field-group readonly-group">
-                        <label className="field-label">Total Fare (₹)</label>
+                        <label className="field-label">Total Fare</label>
                         <input type="text" readOnly
                           value={"₹" + totalFare.toLocaleString("en-IN")}
                           className="field-input readonly fare-display" />
@@ -573,66 +527,79 @@ export default function BookNow() {
                       </div>
                     </div>
 
-                    <div className="form-nav-btns">
-                      <button type="button" className="btn-next"
-                        onClick={() => setFormStep(1)}
-                        disabled={!reservation.reservationType || !reservation.journeyDate}>
-                        Continue to Passengers
+                    <div className="nav-btns">
+                      <AnimBtn
+                        className="btn-primary"
+                        onClick={() => goToStep(1)}
+                        disabled={!step0Valid}
+                      >
+                        Continue
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <path d="M5 12h14M12 5l-7 7-7 7"/>
+                          <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
-                      </button>
+                      </AnimBtn>
                     </div>
                   </div>
                 )}
 
                 {/* ── STEP 1: Passengers ── */}
                 {formStep === 1 && (
-                  <div className="form-section fade-in-up">
-                    <div className="pax-header">
-                      <h2 className="section-heading">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-                        </svg>
-                        Passenger Details
-                      </h2>
+                  <div className={panelClass}>
+                    <div className="pax-head">
+                      <div className="sec-head">
+                        <div className="sec-head-icon">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                          </svg>
+                        </div>
+                        Passengers
+                      </div>
                       <button type="button" className="btn-add-pax" onClick={addPassenger}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
                         </svg>
-                        Add Passenger
+                        Add
                       </button>
                     </div>
 
-                    <div className="passengers-list">
+                    {/* Seat auto-assign note */}
+                    <div className="seat-auto-note">
+                      <span className="seat-note-icon">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                      </span>
+                      Seats are auto-assigned after payment — just like a real airline. No need to pick manually!
+                    </div>
+
+                    <div className="pax-list">
                       {passengers.map((p, idx) => (
                         <div key={p._key} className="pax-card">
-                          <div className="pax-card-header">
-                            <div className="pax-num-badge">
-                              <span>{idx + 1}</span>
-                            </div>
-                            <span className="pax-card-title">Passenger {idx + 1}</span>
+                          <div className="pax-card-head">
+                            <div className="pax-badge">{idx + 1}</div>
+                            <span className="pax-title">Passenger {idx + 1}</span>
                             {passengers.length > 1 && (
-                              <button type="button" className="btn-remove-pax"
+                              <button type="button" className="btn-rm-pax"
                                 onClick={() => removePassenger(p._key)}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                                 </svg>
                               </button>
                             )}
                           </div>
                           <div className="pax-grid">
-                            <div className="field-group pax-name">
+                            <div className="field-group" style={{ gridColumn:"1/-1" }}>
                               <label className="field-label">Full Name</label>
                               <input type="text" placeholder="As on passport"
                                 value={p.name} className="field-input"
-                                onChange={(e) => onPassengerChange(p._key, "name", e.target.value)} required />
+                                onChange={(e) => onPaxChange(p._key, "name", e.target.value)} required />
                             </div>
                             <div className="field-group">
                               <label className="field-label">Gender</label>
                               <div className="select-wrap">
                                 <select value={p.gender} className="field-input"
-                                  onChange={(e) => onPassengerChange(p._key, "gender", e.target.value)} required>
+                                  onChange={(e) => onPaxChange(p._key, "gender", e.target.value)} required>
                                   <option value="">Select</option>
                                   <option value="Male">Male</option>
                                   <option value="Female">Female</option>
@@ -643,186 +610,303 @@ export default function BookNow() {
                             </div>
                             <div className="field-group">
                               <label className="field-label">Age</label>
-                              <input type="number" min="1" max="120" placeholder="28"
+                              <input type="number" min="1" max="120" placeholder="Age"
                                 value={p.age} className="field-input"
-                                onChange={(e) => onPassengerChange(p._key, "age", e.target.value)} required />
-                            </div>
-                            <div className="field-group seat-note">
-                              <label className="field-label">Seat Assignment</label>
-                              <div className="seat-info">Seats are assigned automatically after payment, just like a real airline booking.</div>
+                                onChange={(e) => onPaxChange(p._key, "age", e.target.value)} required />
                             </div>
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="form-nav-btns spread">
-                      <button type="button" className="btn-back" onClick={() => setFormStep(0)}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <div className="nav-btns spread">
+                      <AnimBtn className="btn-ghost" onClick={() => goToStep(0)}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M19 12H5M12 5l-7 7 7 7"/>
                         </svg>
                         Back
-                      </button>
-                      <button type="submit" className="btn-pay" disabled={saving}>
-                        {saving ? (
-                          <span className="btn-loading">
-                            <span className="spin-ring" /> Processing...
-                          </span>
-                        ) : (
-                          <>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
-                            </svg>
-                            Pay ₹{totalFare.toLocaleString("en-IN")} &amp; Confirm
-                          </>
-                        )}
-                      </button>
+                      </AnimBtn>
+                      <AnimBtn
+                        className="btn-primary"
+                        onClick={() => goToStep(2)}
+                        disabled={!step1Valid}
+                      >
+                        Review Booking
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                      </AnimBtn>
                     </div>
                   </div>
                 )}
 
-              </form>
+                {/* ── STEP 2: Review ── */}
+                {formStep === 2 && (
+                  <div className={panelClass}>
+                    <div className="sec-head">
+                      <div className="sec-head-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                        </svg>
+                      </div>
+                      Review Your Booking
+                    </div>
+
+                    <div className="review-panel">
+
+                      {/* Route */}
+                      <div className="review-section">
+                        <div className="review-section-title">Flight Details</div>
+                        <div className="review-route-block">
+                          <div>
+                            <div className="review-iata">{flight.source?.slice(0,3).toUpperCase() || "BOM"}</div>
+                            <div className="review-city">{flight.source || "Mumbai"}</div>
+                            <div style={{ fontSize:".85rem", fontWeight:700, color:"var(--text)", marginTop:".3rem" }}>{depTime || "--:--"}</div>
+                          </div>
+                          <div className="review-plane-mid">
+                            <div className="review-dashed" />
+                            <div className="review-plane-icon"><PlaneIcon size={20} /></div>
+                            <div className="review-dashed" />
+                          </div>
+                          <div style={{ textAlign:"right" }}>
+                            <div className="review-iata">{flight.destination?.slice(0,3).toUpperCase() || "JFK"}</div>
+                            <div className="review-city">{flight.destination || "New York"}</div>
+                            <div style={{ fontSize:".85rem", fontWeight:700, color:"var(--text)", marginTop:".3rem" }}>{arrival || "--:--"}</div>
+                          </div>
+                        </div>
+                        <div className="review-grid">
+                          {[
+                            ["Flight",    flightData.flight?.flightId || "SW-411"],
+                            ["Aircraft",  flightData.flight?.flightName || "Boeing 777"],
+                            ["Date",      reservation.journeyDate || "--"],
+                            ["Class",     flightData.cabinClass || "Economy"],
+                            ["Type",      reservation.reservationType || "--"],
+                            ["Duration",  flight.travelDuration || "--"],
+                          ].map(([l, v]) => (
+                            <div key={l} className="review-cell">
+                              <div className="rc-label">{l}</div>
+                              <div className="rc-val">{v}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Passengers */}
+                      <div className="review-section">
+                        <div className="review-section-title">Passengers ({passengers.length})</div>
+                        <div className="review-pax-list">
+                          {passengers.map((p, i) => (
+                            <div key={p._key} className="review-pax-row">
+                              <div className="rpax-num">{i + 1}</div>
+                              <div className="rpax-name">{p.name || "—"}</div>
+                              <div className="rpax-meta">
+                                <span>{p.gender || "—"}</span>
+                                <span>Age {p.age || "—"}</span>
+                                <span style={{ color:"var(--blue)", fontWeight:600 }}>Seat: Auto</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Fare */}
+                      <div className="review-section">
+                        <div className="review-section-title">Fare Summary</div>
+                        <div className="review-fare-block">
+                          <div className="review-fare-row">
+                            <span>Base Fare × {passengers.length}</span>
+                            <span>₹{fareCalculation(passengers.length, price).toLocaleString("en-IN")}</span>
+                          </div>
+                          <div className="review-fare-row">
+                            <span>Taxes & Surcharges</span>
+                            <span>Included</span>
+                          </div>
+                          <div className="review-fare-total">
+                            <span>Amount to Pay</span>
+                            <span className="review-fare-amt">₹{totalFare.toLocaleString("en-IN")}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div className="nav-btns spread">
+                      <AnimBtn className="btn-ghost" onClick={() => goToStep(1)}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M19 12H5M12 5l-7 7 7 7"/>
+                        </svg>
+                        Edit
+                      </AnimBtn>
+                      <AnimBtn
+                        className="btn-pay"
+                        onClick={handleSubmit}
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <span className="btn-loading-inner">
+                            <span className="spin" /> Processing...
+                          </span>
+                        ) : (
+                          <>
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
+                            </svg>
+                            Pay ₹{totalFare.toLocaleString("en-IN")}
+                          </>
+                        )}
+                      </AnimBtn>
+                    </div>
+                  </div>
+                )}
+
+              </div>
             </main>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          PHASE: PAYING
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ PHASE: PAYING ══════════════════════════════════════════════════════ */}
       {phase === "paying" && (
-        <div className="paying-stage" key="paying">
+        <div className="paying-stage">
           <div className="paying-card">
-
-            {/* Orbital loader */}
-            <div className="orbital-loader">
+            <div className="orbit-loader">
               <div className="orbit-ring or1" />
               <div className="orbit-ring or2" />
               <div className="orbit-ring or3" />
-              <div className="orbit-dot od1" />
-              <div className="orbit-dot od2" />
               <div className="orbit-core">
-                <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-                  <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-                </svg>
+                <PlaneIcon size={24} />
               </div>
             </div>
-
             <p className="paying-title">Processing Payment</p>
             <p className="paying-msg">{payMsg}</p>
-
-            {/* Steps */}
             <div className="pay-steps">
-              {["Create Order", "Payment", "Verify", "Confirm"].map((s, i) => (
+              {["Order","Payment","Verify","Confirm"].map((s, i) => (
                 <div key={s} className={`pay-step ${getStepClass(payMsg, i)}`}>
-                  <div className="pay-step-dot" />
+                  <div className="pay-dot" />
                   <span>{s}</span>
                 </div>
               ))}
             </div>
-
             <p className="paying-secure">
-              <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
-                <path d="M6 0L12 3V7C12 10.3 9.3 13.3 6 14 2.7 13.3 0 10.3 0 7V3L6 0Z" fill="#C9A84C" opacity=".3"/>
-                <path d="M6 1L11 3.5V7C11 9.8 8.8 12.5 6 13.2 3.2 12.5 1 9.8 1 7V3.5L6 1Z" stroke="#C9A84C" strokeWidth="1" fill="none"/>
+              <svg width="11" height="13" viewBox="0 0 12 14" fill="none">
+                <path d="M6 0L12 3V7C12 10.3 9.3 13.3 6 14 2.7 13.3 0 10.3 0 7V3L6 0Z" fill="var(--blue)" opacity=".2"/>
+                <path d="M6 1L11 3.5V7C11 9.8 8.8 12.5 6 13.2 3.2 12.5 1 9.8 1 7V3.5L6 1Z" stroke="var(--blue)" strokeWidth="1" fill="none"/>
               </svg>
-              256-bit SSL Encrypted · Sky Ways Payment Gateway
+              256-bit SSL · SkyWays Payment Gateway
             </p>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          PHASE: PLANES-SUCCESS (cinematic celebration)
-      ══════════════════════════════════════════════════════════════════════ */}
-      {phase === "planes-success" && (
-        <div className="success-fly-stage" key="planes-success">
+      {/* ══ PHASE: SUCCESS ═════════════════════════════════════════════════════ */}
+      {phase === "success" && (
+        <div className="success-stage">
           <div className="success-burst" />
-          <div className="success-burst sb2" />
-
-          {/* Formation of 3 planes */}
-          {[1,2,3].map(i => (
-            <div key={i} className={`success-plane sp${i}`}>
-              <svg viewBox="0 0 200 80" fill="none" width="160">
-                <path d="M20 40 Q50 34 115 38 Q145 40 175 38 Q192 40 175 42 Q145 44 115 42 Q50 46 20 42 Z" fill="#E8EAEE"/>
-                <path d="M170 38 Q195 40 170 42 Z" fill="#C5C8CE"/>
-                <path d="M95 39 L80 12 L130 35 Z" fill="#D0D4DA"/>
-                <path d="M95 41 L80 68 L130 45 Z" fill="#C5C8CE"/>
-                <path d="M35 39 L22 16 L48 36 Z" fill="#C8CBD1"/>
-                {[65,76,87,98,109].map((x,j) => (
-                  <rect key={j} x={x} y="37" width="6" height="5" rx="1.5" fill="#5AABFF" opacity={0.7-j*0.08}/>
-                ))}
-                <path d="M88 39.5 Q140 38 172 40 L172 40.5 Q140 38.5 88 40 Z" fill="#C9A84C"/>
-              </svg>
-            </div>
-          ))}
-
-          <div className="success-fly-text">
-            <div className="success-checkmark">
-              <svg width="40" height="40" viewBox="0 0 52 52">
-                <circle cx="26" cy="26" r="25" fill="none" stroke="#C9A84C" strokeWidth="2" className="check-circle"/>
-                <path d="M14 27l8 8 16-16" fill="none" stroke="#C9A84C" strokeWidth="3"
+          <div className="success-burst burst2" />
+          <div className="success-planes">
+            {[1,2,3].map(i => (
+              <div key={i} className={`spl spl${i}`} style={{
+                top: `${40 + (i-2)*12}%`,
+                left: 0,
+              }}>
+                <SmallPlane size={120 + i * 20} />
+              </div>
+            ))}
+          </div>
+          <div className="success-center">
+            <div className="success-check">
+              <svg width="56" height="56" viewBox="0 0 52 52">
+                <circle cx="26" cy="26" r="25" fill="none" stroke="var(--blue)" strokeWidth="1.5" className="check-circle"/>
+                <path d="M14 27l8 8 16-16" fill="none" stroke="var(--blue)" strokeWidth="3"
                   strokeLinecap="round" strokeLinejoin="round" className="check-path"/>
               </svg>
             </div>
-            <p>Payment Successful!</p>
+            <p className="success-label">Payment Successful!</p>
           </div>
         </div>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          PHASE: DONE (confirmation only, then navigate to boarding pass)
-      ══════════════════════════════════════════════════════════════════════ */}
+      {/* ══ PHASE: DONE ════════════════════════════════════════════════════════ */}
       {phase === "done" && (
-        <div className="done-stage" key="done">
-          <div className="confirmation-panel fade-in-up">
-            <div className="confirmation-header">
-              <span className="confirm-status">✓ Booking Confirmed</span>
-              <p>Please verify your booking details below before getting your boarding pass.</p>
+        <div className="done-stage">
+
+          <div className="confirm-card anim-up">
+
+            {/* Blue header */}
+            <div className="confirm-top">
+              <div className="confirm-status-row">
+                <div className="confirm-check-icon">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
+                <span className="confirm-status">Booking Confirmed</span>
+              </div>
+              <p className="confirm-sub">
+                Your reservation is secured. Review your details below.
+              </p>
             </div>
-            <div className="confirmation-grid">
+
+            {/* Route */}
+            <div className="confirm-route">
               <div>
-                <span className="confirm-label">Reservation ID</span>
-                <span className="confirm-value">{ticket?.reservationId || autoReservationId}</span>
+                <div className="conf-iata">{flight.source?.slice(0,3).toUpperCase() || "BOM"}</div>
+                <div className="conf-city">{flight.source || "Mumbai"}</div>
               </div>
-              <div>
-                <span className="confirm-label">Flight</span>
-                <span className="confirm-value">{ticket?.flightNumber || flight.flightId || flightData.flight?.flightId || "SW-411"}</span>
+              <div className="conf-mid">
+                <div className="conf-mid-line" />
+                <div className="conf-plane-icon"><PlaneIcon size={20} /></div>
+                <div className="conf-mid-line" />
               </div>
-              <div>
-                <span className="confirm-label">Date</span>
-                <span className="confirm-value">{reservation.journeyDate || ticket?.journeyDate || today}</span>
-              </div>
-              <div>
-                <span className="confirm-label">Passengers</span>
-                <span className="confirm-value">{ticket?.noOfSeats || passengers.length}</span>
-              </div>
-              <div>
-                <span className="confirm-label">Seats</span>
-                <span className="confirm-value">{seatList}</span>
-              </div>
-              <div>
-                <span className="confirm-label">Amount Paid</span>
-                <span className="confirm-value">₹{Number(ticket?.totalFare || totalFare).toLocaleString("en-IN")}</span>
+              <div style={{ textAlign:"right" }}>
+                <div className="conf-iata">{flight.destination?.slice(0,3).toUpperCase() || "JFK"}</div>
+                <div className="conf-city">{flight.destination || "New York"}</div>
               </div>
             </div>
-          </div>
-          <div className="action-buttons fade-in-up">
-            <button className="btn-boarding-pass" onClick={() => navigate("/boarding-pass", { state: boardingPassPayload })}>
-              Get Your Boarding Pass
-              <span className="arrow">
+
+            {/* Details grid */}
+            <div className="confirm-grid">
+              {[
+                ["Reservation ID", ticket?.reservationId || autoReservationId],
+                ["Flight",         ticket?.flightNumber  || flight.flightId || "SW-411"],
+                ["Date",           reservation.journeyDate || ticket?.journeyDate || today],
+                ["Passengers",     String(ticket?.noOfSeats || passengers.length)],
+                ["Seats",          seatList],
+                ["Amount Paid",    "₹" + Number(ticket?.totalFare || totalFare).toLocaleString("en-IN")],
+              ].map(([l, v]) => (
+                <div key={l} className="cg-cell">
+                  <div className="cg-label">{l}</div>
+                  <div className="cg-val">{v}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="confirm-actions">
+              <AnimBtn
+                className="btn-boarding"
+                onClick={() => navigate("/boarding-pass", { state: boardingPassPayload })}
+                style={{ width:"100%" }}
+              >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <polyline points="2 10 22 10"/>
+                </svg>
+                Get Your Boarding Pass
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
-              </span>
-            </button>
-            <button className="btn-new-booking" onClick={handleReset}>
-              Book Another Flight
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-              </svg>
-            </button>
+              </AnimBtn>
+              <AnimBtn
+                className="btn-secondary"
+                onClick={handleReset}
+                style={{ width:"100%" }}
+              >
+                Book Another Flight
+              </AnimBtn>
+            </div>
           </div>
+
         </div>
       )}
 
