@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.mphasis.skywaysairline.bookingservice.client.UserClient;
 import com.mphasis.skywaysairline.bookingservice.models.Payment;
 import com.mphasis.skywaysairline.bookingservice.repo.PaymentRepository;
 import com.razorpay.Order;
@@ -28,7 +29,8 @@ public class PaymentService {
 
     @Autowired
     private PaymentRepository paymentRepo;
-
+   
+    @Autowired private UserClient userClient;
     // 🔥 CREATE ORDER
     public String createOrder(double amount) {
 
@@ -68,7 +70,7 @@ public class PaymentService {
  public boolean verifyPayment(String orderId, String paymentId, String signature) {
      try {
          String data = orderId + "|" + paymentId;
-
+        System.out.println(orderId+" "+paymentId+"signature");
          Mac mac = Mac.getInstance("HmacSHA256");
          mac.init(new SecretKeySpec(keySecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
 
@@ -98,6 +100,79 @@ public class PaymentService {
          throw new RuntimeException("Verification failed", e);
      }
  }
+//Add these methods to your PaymentService.java
+
+//🔥 CREATE WALLET TOP-UP ORDER
+public String createWalletOrder(Double amount, String userId) {
+  try {
+      System.out.println("Creating Razorpay wallet order for amount: " + amount + " userId: " + userId);
+
+      RazorpayClient client = new RazorpayClient(keyId, keySecret);
+
+      JSONObject options = new JSONObject();
+      options.put("amount", (int)(amount * 100)); // paise
+      options.put("currency", "INR");
+      String receipt = "WALLET_" + System.currentTimeMillis();
+      options.put("receipt", receipt);
+
+      Order order = client.orders.create(options);
+
+      // save DB with wallet type
+      Payment payment = new Payment();
+      payment.setOrderId(order.get("id"));
+      payment.setAmount(amount);
+      payment.setPaymentStatus("PENDING");
+      payment.setPaymentDate(LocalDateTime.now());
+      payment.setUserId(userId); // Add userId field to Payment model
+      payment.setPaymentType("WALLET_TOPUP"); // Add paymentType field
+
+      paymentRepo.save(payment);
+      System.out.println("Wallet order created and saved: " + order.get("id"));
+      return order.get("id");
+
+  } catch (Exception e) {
+      System.err.println("Razorpay createWalletOrder error: " + e.getMessage());
+      throw new RuntimeException("Failed to create Razorpay wallet order: " + e.getMessage());
+  }
+}
+
+//🔥 VERIFY WALLET PAYMENT
+public boolean verifyWalletPayment(String orderId, String paymentId, String signature, String userId) {
+  try {
+	  String data = orderId + "|" + paymentId;
+      System.out.println(data);
+      Mac mac = Mac.getInstance("HmacSHA256");
+      mac.init(new SecretKeySpec(keySecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+
+      byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+      String generatedSignature = bytesToHex(hash);  // Use hex instead of Base64
+
+      System.out.println("Generated signature: " + generatedSignature);
+      System.out.println("Received signature: " + signature);
+
+      if (!generatedSignature.equals(signature)) {
+          System.err.println("Wallet payment signature mismatch!");
+          return false;
+      }
+
+      Payment payment = paymentRepo.findByOrderId(orderId)
+              .orElseThrow(() -> new RuntimeException("Wallet order not found"));
+
+      payment.setTransactionId(paymentId);
+      payment.setPaymentStatus("SUCCESS");
+      payment.setPaymentDate(LocalDateTime.now());
+      paymentRepo.save(payment);
+
+      // Update user wallet balance via user service
+      userClient.addWalletMoney(userId, payment.getAmount());
+      
+      return true;
+
+  } catch (Exception e) {
+      System.err.println("Wallet verification failed: " + e.getMessage());
+      throw new RuntimeException("Wallet verification failed", e);
+  }
+}
 
  // Helper method to convert bytes to hex
  private String bytesToHex(byte[] bytes) {

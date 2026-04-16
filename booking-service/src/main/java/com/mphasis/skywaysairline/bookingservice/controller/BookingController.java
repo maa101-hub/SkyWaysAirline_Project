@@ -1,5 +1,7 @@
 package com.mphasis.skywaysairline.bookingservice.controller;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mphasis.skywaysairline.bookingservice.dto.BookingRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.PaymentConfirmRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.TicketResponse;
+import com.mphasis.skywaysairline.bookingservice.dto.WalletVerifyRequest;
 import com.mphasis.skywaysairline.bookingservice.response.ApiResponse;
 import com.mphasis.skywaysairline.bookingservice.service.BookingService;
 
@@ -49,4 +52,45 @@ public class BookingController {
                 new ApiResponse<>("Booking Successful", response)
         );
     }
+ // Add these endpoints to your BookingController.java
+
+ // 🔥 CREATE WALLET TOP-UP ORDER
+ @PostMapping("/wallet/add")
+ public ResponseEntity<ApiResponse<String>> addWalletMoney(
+         @RequestBody Map<String, Double> request) {
+     
+	 System.out.println("System Is Working Now 1");
+     Double amount = request.get("amount");
+     if (amount <= 0 || amount > 50000) {
+         throw new IllegalArgumentException("Invalid amount");
+     }
+     
+     String orderId = service.createWalletOrder(amount);
+     System.out.println("System Is Working Now 2"+amount);
+     return ResponseEntity.ok(
+             new ApiResponse<>("Wallet order created", orderId)
+     );
+ }
+
+ // 🔥 VERIFY WALLET PAYMENT
+ @PostMapping("/wallet/verify")
+ public ResponseEntity<ApiResponse<String>> verifyWalletPayment(
+         @RequestBody  WalletVerifyRequest request) {
+     
+     String orderId = request.getOrderId();
+     String paymentId = request.getPaymentId();
+     String signature = request.getSignature();
+     
+     boolean success = service.confirmWalletTopup(orderId, paymentId, signature);
+     
+     if (success) {
+         return ResponseEntity.ok(
+                 new ApiResponse<>("Wallet top-up successful", "SUCCESS")
+         );
+     } else {
+         return ResponseEntity.badRequest().body(
+                 new ApiResponse<>("Wallet top-up failed", "FAILED")
+         );
+     }
+ }
 }

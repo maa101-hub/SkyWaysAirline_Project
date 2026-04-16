@@ -166,4 +166,27 @@ public class BookingService {
         System.out.println("confirmBooking completed for reservationId=" + res.getReservationId());
         return response;
     }
+ // Add these methods to your BookingService.java
+
+ // 🔥 CREATE WALLET TOP-UP ORDER
+ public String createWalletOrder(Double amount) {
+     String userEmail = getLoggedInUserEmail();
+     // Get userId from user service
+     System.out.println("It is working go for user details"+userEmail);
+     String userId =" ";
+     try {
+    	 userId = userClient.getUserIdByEmail(userEmail);
+     }
+     catch (Exception e){
+    	 System.out.println("User not found");
+     }
+     return paymentService.createWalletOrder(amount, userId);
+ }
+
+ // 🔥 CONFIRM WALLET TOP-UP
+ public boolean confirmWalletTopup(String orderId, String paymentId, String signature) {
+     String userEmail = getLoggedInUserEmail();
+     String userId = userClient.getUserIdByEmail(userEmail);
+     return paymentService.verifyWalletPayment(orderId, paymentId, signature, userId);
+ }
 }

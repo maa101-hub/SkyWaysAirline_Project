@@ -283,7 +283,7 @@ export default function BoardingPass() {
   const printRef = useRef(null);
   const state = location.state || {};
 
-  const boarding = {
+  const boardings = Array.isArray(state) ? state : [{
     flightNumber: state.flightNumber || 'SW-411',
     passengerName: state.passengerName || 'Guest',
     fromCode: state.fromCode || 'DXB',
@@ -302,15 +302,16 @@ export default function BoardingPass() {
     reservationId: state.reservationId || '90221002299KUIL',
     amountPaid: state.amountPaid || 0,
     qrSeed: state.qrSeed || 42,
-  };
+  }];
 
   const handleDownloadPdf = () => {
     const element = printRef.current;
     if (!element) return;
 
+    const firstBoarding = boardings[0];
     const options = {
       margin: 0.5,
-      filename: `SkyWays_BoardingPass_${boarding.reservationId}.pdf`,
+      filename: `SkyWays_BoardingPass_${firstBoarding.reservationId}_${boardings.length}_passengers.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -320,7 +321,8 @@ export default function BoardingPass() {
   };
 
   const handleShare = async () => {
-    const shareText = `SkyWays Boarding Pass for ${boarding.passengerName} on ${boarding.journeyDate}. Flight ${boarding.flightNumber} from ${boarding.fromCity} to ${boarding.toCity}. Seats: ${boarding.seatNos}.`;
+    const firstBoarding = boardings[0];
+    const shareText = `SkyWays Boarding Pass for ${firstBoarding.passengerName} on ${firstBoarding.journeyDate}. Flight ${firstBoarding.flightNumber} from ${firstBoarding.fromCity} to ${firstBoarding.toCity}. Seats: ${firstBoarding.seatNos}.`;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -356,8 +358,12 @@ export default function BoardingPass() {
         <button className="btn-share" onClick={handleShare}>Share Boarding Pass</button>
       </div>
       <div className="boarding-pass-content" ref={printRef}>
-        <Ticket1 boarding={boarding} />
-        <Ticket2 boarding={boarding} />
+        {boardings.map((boarding, index) => (
+          <div key={index} className="boarding-pass-item">
+            <Ticket1 boarding={boarding} />
+            <Ticket2 boarding={boarding} />
+          </div>
+        ))}
       </div>
     </div>
   );

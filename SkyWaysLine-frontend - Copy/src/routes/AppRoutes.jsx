@@ -2,9 +2,6 @@ import { Routes, Route } from "react-router-dom";
 import Login from "../pages/common/Login";
 import SignUp from "../pages/common/SignUp";
 import ProtectedRoute from "../components/common/ProtectedRoute";
-
-import UserDashboard from "../pages/user/Home";
-import AdminDashboard from "../pages/admin/Dashboard";
 import Home from "../pages/user/Home";
 import Dashboard from "../pages/admin/Dashboard";
 import BookNow from "../pages/Booking/BookNow";

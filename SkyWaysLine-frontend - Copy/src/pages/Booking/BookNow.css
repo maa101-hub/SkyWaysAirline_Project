@@ -9,7 +9,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── CSS Variables ─────────────────────────────────────────────────────────── */
-:root {
+.bn-wrap {
   --sky-0:       #f0f6ff;
   --sky-1:       #e2eeff;
   --sky-2:       #c8ddff;
@@ -194,17 +194,11 @@
 }
 
 .nav-logo {
-  display: flex;
-  align-items: center;
-  gap: .5rem;
-  font-family: var(--font-d);
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: var(--blue-dark);
-  letter-spacing: -.02em;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.45rem; color: var(--sky-l);
+  display: flex; align-items: center; gap: 4px;
 }
-.nav-logo-mark { color: var(--blue); font-size: .9rem; }
-.nav-logo em { color: var(--blue); font-style: normal; }
+.nav-logo span { color: var(--accent); }
 
 .nav-route {
   display: flex;

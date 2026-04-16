@@ -178,7 +178,7 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
 /// kaithwas admin id -admin123
 /// //sourabh adminid-admin
-        UserCredentials admin = credentialsRepo.findById("admin123")
+        UserCredentials admin = credentialsRepo.findById("admin")
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
 
         Double customerWallet = customer.getUserProfile().getWallet() != null ? customer.getUserProfile().getWallet() : 0;
@@ -197,6 +197,28 @@ public class UserService {
         profileRepo.save(customer.getUserProfile());
         profileRepo.save(admin.getUserProfile());
         return "Wallet Updated Succe fully";
+    }
+ // Add this method after transferMoney method
+    @Transactional
+    public String addWalletMoney(String userId, Double amount) {
+        UserCredentials user = credentialsRepo.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        
+        Double currentWallet = user.getUserProfile().getWallet() != null ? user.getUserProfile().getWallet() : 0.0;
+        user.getUserProfile().setWallet(currentWallet + amount);
+        
+        profileRepo.save(user.getUserProfile());
+        
+        return "Wallet updated successfully";
+    }
+ // Add this method - needed by booking service for wallet operations
+    public String getUserIdByEmail(String email) {
+    	System.out.println(email);
+        UserCredentials user = credentialsRepo
+                .findByUserProfile_Email(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        
+        return user.getUserId();
     }
     
 }

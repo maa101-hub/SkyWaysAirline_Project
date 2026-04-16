@@ -1,40 +1,7 @@
 /* ── Dashboard.css ── */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-:root {
-  --navy:   #0a0f2c;
-  --side:   #0d1330;
-  --card:   #141b3a;
-  --card-h: #1a2348;
-  --sky:    #4fa3e3;
-  --sky-l:  #7ec8f7;
-  --accent: #f0a500;
-  --green:  #4caf7d;
-  --red:    #e05555;
-  --text:   #e8eaf6;
-  --muted:  #7b84b0;
-  --border: rgba(79,163,227,0.16);
-  --ibg:    rgba(255,255,255,0.05);
-  --topbar-bg: rgba(10,15,44,0.9);
-}
-
-/* updated by Rohit Kaithwas: added topbar background variable so admin topbar follows light/dark theme */
-[data-theme="light"] {
-  --navy:   #f0f4f8;
-  --side:   #ffffff;
-  --card:   #ffffff;
-  --card-h: #f8f9fa;
-  --sky:    #007bff;
-  --sky-l:  #66b3ff;
-  --accent: #ffc107;
-  --green:  #28a745;
-  --red:    #dc3545;
-  --text:   #212529;
-  --muted:  #6c757d;
-  --border: rgba(0,123,255,0.16);
-  --ibg:    rgba(0,0,0,0.05);
-  --topbar-bg: rgba(255,255,255,0.95);
-}
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -126,7 +93,7 @@
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--text);
   margin-right: 10px;
 }
 

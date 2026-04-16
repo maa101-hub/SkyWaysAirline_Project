@@ -1,33 +1,6 @@
 /* ── SignUp.css ── */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-/* updated by Rohit Kaithwas: added theme-aware navbar background variable for signup page */
-:root {
-  --navy: #0a0f2c;
-  --card: #141b3a;
-  --sky: #4fa3e3;
-  --sky-light: #7ec8f7;
-  --accent: #f0a500;
-  --text: #e8eaf6;
-  --muted: #7b84b0;
-  --border: rgba(79, 163, 227, 0.18);
-  --input-bg: rgba(255, 255, 255, 0.04);
-  --auth-nav-bg: rgba(10, 15, 44, 0.85);
-}
-
-[data-theme="light"] {
-  --navy: #f0f4f8;
-  --card: #ffffff;
-  --sky: #007bff;
-  --sky-light: #66b3ff;
-  --accent: #ffc107;
-  --text: #212529;
-  --muted: #6c757d;
-  --border: rgba(0, 123, 255, 0.18);
-  --input-bg: rgba(255, 255, 255, 0.96);
-  --auth-nav-bg: rgba(255, 255, 255, 0.95);
-}
-
 /* ── Background ── */
 .auth-bg {
   font-family: 'DM Sans', sans-serif;
@@ -104,20 +77,22 @@
   color: var(--muted);
 }
 .nav-cta {
-  background: transparent;
-  border: 1.5px solid var(--sky);
-  color: var(--sky-light);
-  padding: 7px 20px;
+  background: var(--sky);
+  border: 1.5px solid transparent;
+  color: #fff;
+  padding: 8px 22px;
   border-radius: 100px;
   font-size: 0.85rem;
   font-family: 'DM Sans', sans-serif;
   cursor: pointer;
   text-decoration: none;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s, transform 0.2s;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.14);
 }
 .nav-cta:hover {
-  background: var(--sky);
+  background: var(--sky-light);
   color: var(--navy);
+  transform: translateY(-1px);
 }
 
 .theme-toggle {
@@ -317,29 +292,39 @@
 /* ── Button ── */
 .btn-primary {
   width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, var(--sky) 0%, #1a6fa8 100%);
-  border: none;
-  border-radius: 12px;
+  min-height: 52px;
+  padding: 14px 16px;
+  background: var(--sky);
+  border: 2px solid var(--sky-l);
+  border-radius: 14px;
   color: #fff;
   font-family: 'DM Sans', sans-serif;
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
   cursor: pointer;
   margin-top: 24px;
-  letter-spacing: 0.3px;
-  transition: opacity 0.2s, transform 0.15s;
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
   position: relative;
   overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
-.btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+.btn-primary:hover {
+  opacity: 0.98;
+  transform: translateY(-1px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.26);
+}
 .btn-primary:active { transform: translateY(0); }
 .btn-primary::after {
   content: '';
   position: absolute;
   top: 0; left: -100%;
   width: 60%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
   animation: shine 2.5s infinite;
 }
 @keyframes shine {

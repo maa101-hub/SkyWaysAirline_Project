@@ -12,15 +12,46 @@ public class UserClient {
     @Autowired
     private RestTemplate restTemplate;
 
+    // ✅ Existing method
     public String transferMoney(String customerId, Double price) {
-
         String url = "http://localhost:8082/api/users/wallet"
-                + "?customerId=" + customerId   // ✅ FIXED
+                + "?customerId=" + customerId
                 + "&price=" + price;
 
         ResponseEntity<String> response = restTemplate.exchange(
                 url,
                 HttpMethod.PUT,
+                null,
+                String.class
+        );
+
+        return response.getBody();
+    }
+
+    // 🆕 Add these new methods for wallet functionality
+
+    public String addWalletMoney(String userId, Double amount) {
+        String url = "http://localhost:8082/api/users/wallet/add"
+                + "?userId=" + userId
+                + "&amount=" + amount;
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                null,
+                String.class
+        );
+
+        return response.getBody();
+    }
+
+    public String getUserIdByEmail(String email) {
+        String url = "http://localhost:8082/api/users/id-by-email"
+                + "?email=" + email;
+
+        ResponseEntity<String> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
                 null,
                 String.class
         );

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import "./BookNow.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { initiatePayment } from "../../utils/razorpay";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SEAT_LETTERS = ["A","B","C","D","E","F"];
@@ -369,9 +370,9 @@ export default function BookNow() {
 
   const seatList = passengers.map((p) => p.seatNo || "—").join(", ");
 
-  const boardingPassPayload = {
+  const boardingPassPayload = passengers.map((passenger, index) => ({
     flightNumber:  ticket?.flightNumber || flight.flightId || "SW-411",
-    passengerName: passengers.map((p) => p.name || "Guest").join(", "),
+    passengerName: passenger.name || "Guest",
     fromCode:      flightData.fromCode || flight.source?.slice(0,3).toUpperCase() || "BOM",
     toCode:        flightData.toCode   || flight.destination?.slice(0,3).toUpperCase() || "JFK",
     fromCity:      flight.source       || "Mumbai",
@@ -381,15 +382,14 @@ export default function BookNow() {
     journeyDate:   reservation.journeyDate || ticket?.journeyDate || today,
     gate:          ticket?.gate     || "B" + (Math.floor(Math.random() * 20) + 10),
     terminal:      ticket?.terminal || "T3",
-    seatNos:       passengers.map((p) => p.seatNo || "—").join(", "),
+    seatNos:       passenger.seatNo || "—",
     boardingTime:  depTime || "22:45",
     group:         flightData.cabinClass?.slice(0,1).toUpperCase() || "E",
     classType:     flightData.cabinClass || "Economy",
     reservationId: ticket?.reservationId || autoReservationId,
     amountPaid:    Number(ticket?.totalFare || totalFare),
-    qrSeed:        Number(ticket?.reservationId?.slice(-6)) || 42,
-  };
-
+    qrSeed:        Number(ticket?.reservationId?.slice(-6)) || 42 + index,
+  }));
   // Step validation
   const step0Valid = reservation.reservationType && reservation.journeyDate;
   const step1Valid = passengers.every((p) => p.name && p.gender && p.age);
@@ -434,8 +434,7 @@ export default function BookNow() {
           {/* Nav */}
           <header className="form-nav">
             <div className="nav-logo">
-              <span className="nav-logo-mark">✦</span>
-              Sky<em>Ways</em>
+              ✈︎ Sky<span>Ways</span>
             </div>
             <div className="nav-route">
               <span>{flight.source?.slice(0,3).toUpperCase() || flightData.from || "—"}</span>

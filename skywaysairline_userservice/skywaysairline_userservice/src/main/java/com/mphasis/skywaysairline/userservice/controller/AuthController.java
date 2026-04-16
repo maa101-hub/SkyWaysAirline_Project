@@ -77,4 +77,25 @@ public class AuthController {
     	String response = userService.transferMoney(customerId, price);
         return ResponseEntity.ok(response);
     }
+    @PostMapping("/wallet/add")
+    public ResponseEntity<String> addWalletMoney(
+            @RequestParam String userId, 
+            @RequestParam Double amount) {
+        try {
+            String result = userService.addWalletMoney(userId, amount);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to add wallet money: " + e.getMessage());
+        }
+    }
+    
+    @GetMapping("/id-by-email")
+    public ResponseEntity<String> getUserIdByEmail(@RequestParam String email) {
+        try {
+            String userId = userService.getUserIdByEmail(email);
+            return ResponseEntity.ok(userId);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("User not found: " + e.getMessage());
+        }
+    }
 }

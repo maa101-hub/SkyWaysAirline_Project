@@ -8,7 +8,7 @@
   padding: 0;
 }
 
-:root {
+.boarding-pass-page {
   --blue: #1a56a0;
   --blue-mid: #1d62b8;
   --blue-dark: #123f7a;
@@ -33,6 +33,14 @@
   justify-content: center;
   gap: 40px;
   padding: 50px 24px;
+}
+
+.boarding-pass-item {
+  margin-bottom: 60px;
+}
+
+.boarding-pass-item:last-child {
+  margin-bottom: 0;
 }
 
 /* ── PAGE LABEL ── */

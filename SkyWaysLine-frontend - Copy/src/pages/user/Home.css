@@ -1,33 +1,7 @@
 /* ── Home.css ── */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-:root {
-  --navy:   #0a0f2c;
-  --card:   #141b3a;
-  --card-h: #1a2348;
-  --sky:    #4fa3e3;
-  --sky-l:  #7ec8f7;
-  --accent: #f0a500;
-  --green:  #4caf7d;
-  --text:   #e8eaf6;
-  --muted:  #7b84b0;
-  --border: rgba(79,163,227,0.18);
-  --ibg:    rgba(255,255,255,0.05);
-}
-
-[data-theme="light"] {
-  --navy:   #f0f4f8;
-  --card:   #ffffff;
-  --card-h: #f8f9fa;
-  --sky:    #007bff;
-  --sky-l:  #66b3ff;
-  --accent: #ffc107;
-  --green:  #28a745;
-  --text:   #212529;
-  --muted:  #6c757d;
-  --border: rgba(0,123,255,0.18);
-  --ibg:    rgba(0,0,0,0.05);
-}
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -129,7 +103,7 @@
   border: none;
   font-size: 1.2rem;
   cursor: pointer;
-  color: var(--text-color);
+  color: var(--text);
   margin-right: 10px;
 }
 
@@ -868,4 +842,116 @@
     opacity: 1;
     max-width: 100px;
   }
+}
+
+/* ── Wallet Modal Styles ── */
+.wallet-balance-section {
+  padding: 24px 26px 0;
+}
+
+.wallet-balance {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(79,163,227,0.12);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.wallet-icon-large {
+  font-size: 2rem;
+  color: #4fa3e3;
+}
+
+.balance-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: #7b84b0;
+  margin-bottom: 4px;
+}
+
+.balance-amount {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #e8eaf6;
+}
+
+.add-money-section {
+  padding: 0 26px 24px;
+}
+
+.add-money-section h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  color: #e8eaf6;
+  margin-bottom: 16px;
+}
+
+.add-money-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.add-money-form label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #7b84b0;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.add-money-form input {
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(79,163,227,0.18);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: #e8eaf6;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.add-money-form input:focus {
+  border-color: #4fa3e3;
+  background: rgba(79,163,227,0.06);
+}
+
+.add-money-form input::placeholder {
+  color: rgba(123,132,176,0.5);
+}
+
+.amount-note {
+  font-size: 0.75rem;
+  color: #7b84b0;
+  margin-top: 4px;
+}
+
+.add-money-btn {
+  background: linear-gradient(135deg, #4fa3e3 0%, #1a6fa8 100%);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 12px 28px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+  align-self: flex-start;
+}
+
+.add-money-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.add-money-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

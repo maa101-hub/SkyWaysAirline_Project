@@ -2,6 +2,7 @@ package com.mphasis.skywaysairline.bookingservice.models;
 
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,6 +25,27 @@ public class Payment {
     // PENDING / SUCCESS / FAILED
 
     private LocalDateTime paymentDate;
+    @Column(name = "user_id")
+    private String userId;
+
+    @Column(name = "payment_type")
+    private String paymentType; // "BOOKING" or "WALLET_TOPUP"
+   
+	public String getUserId() {
+		return userId;
+	}
+
+	public void setUserId(String userId) {
+		this.userId = userId;
+	}
+
+	public String getPaymentType() {
+		return paymentType;
+	}
+
+	public void setPaymentType(String paymentType) {
+		this.paymentType = paymentType;
+	}
 
 	public Long getPaymentId() {
 		return paymentId;
