@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,90 +33,112 @@ import org.springframework.security.core.context.SecurityContextHolder;
 @Service
 public class BookingService {
 
+    private static final Logger log = LoggerFactory.getLogger(BookingService.class);
+
     @Autowired private ReservationRepository reservationRepo;
     @Autowired private PassengerRepository passengerRepo;
     @Autowired private PaymentRepository paymentRepo;
     @Autowired private PaymentService paymentService;
     @Autowired private FlightClient flightClient;
     @Autowired private UserClient userClient;
-    @Autowired
-    private EmailService emailService;
+    @Autowired private EmailService emailService;
 
     // 🔹 CREATE ORDER
     public String createOrder(BookingRequest req) {
         try {
-            System.out.println("Starting createOrder for scheduleId: " + req.getScheduleId());
+            log.info("Starting createOrder for scheduleId: {}", req.getScheduleId());
 
-            // 1. Validate input
             if (req.getScheduleId() == null || req.getNoOfSeats() <= 0) {
+                log.error("Invalid request data");
                 throw new IllegalArgumentException("Invalid scheduleId or noOfSeats");
             }
 
-            // 1. Get flight details
             FlightResponse flight = flightClient.getFlightDetails(req.getScheduleId());
+
             if (flight == null) {
-                throw new RuntimeException("Flight not found for scheduleId: " + req.getScheduleId());
+                log.error("Flight not found for scheduleId: {}", req.getScheduleId());
+                throw new RuntimeException("Flight not found");
             }
-            System.out.println("Flight details retrieved: " + flight.getFare());
 
-            // 2. Seat check
+            log.info("Flight details fetched successfully. Fare: {}", flight.getFare());
+
             if (flight.getAvailableSeats() < req.getNoOfSeats()) {
-                throw new FlightFullException("Not enough seats available. Requested: " + req.getNoOfSeats() + ", Available: " + flight.getAvailableSeats());
+                log.error("Seats unavailable. Requested: {}, Available: {}",
+                        req.getNoOfSeats(), flight.getAvailableSeats());
+                throw new FlightFullException("Not enough seats available");
             }
-            System.out.println("Seats check passed");
 
-            // 3. Calculate fare
+            log.info("Seat availability check passed");
+
             double totalFare = req.getNoOfSeats() * flight.getFare();
-            System.out.println("Total fare calculated: " + totalFare);
 
-            // 4. Create order
+            log.info("Total fare calculated: {}", totalFare);
+
             String orderId = paymentService.createOrder(totalFare);
-            System.out.println("Order created successfully: " + orderId);
+
+            log.info("Payment order created successfully. OrderId: {}", orderId);
 
             return orderId;
 
         } catch (FlightFullException | IllegalArgumentException e) {
-            System.err.println("Validation error in createOrder: " + e.getMessage());
-            throw e;  // Re-throw to return proper error to fronted
+            log.error("Validation error in createOrder: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
-            System.err.println("Unexpected error in createOrder: " + e.getMessage());
+            log.error("Unexpected error in createOrder: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create order: " + e.getMessage());
         }
     }
-// find the email of user
+
+    // find logged in user email
     private String getLoggedInUserEmail() {
-        return SecurityContextHolder
+        String email = SecurityContextHolder
                 .getContext()
                 .getAuthentication()
                 .getName();
+
+        log.info("Logged in user email fetched: {}", email);
+        return email;
     }
+
     // 🔥 CONFIRM BOOKING
     @Transactional
     public TicketResponse confirmBooking(PaymentConfirmRequest req) {
+
         if (req == null || req.getBookingRequest() == null) {
+            log.error("Invalid payment confirmation request");
             throw new IllegalArgumentException("Invalid payment confirmation request");
         }
 
-        System.out.println("confirmBooking started for orderId=" + req.getOrderId());
-        System.out.println("1");
+        log.info("confirmBooking started for orderId={}", req.getOrderId());
+
         boolean success = paymentService.verifyPayment(
                 req.getOrderId(),
                 req.getPaymentId(),
                 req.getSignature()
         );
-        System.out.println("confirmBooking started for "+success);
+
+        log.info("Payment verification result: {}", success);
+
         if (!success) {
+            log.error("Payment verification failed for orderId={}", req.getOrderId());
             throw new PaymentFailedException("Payment verification failed");
         }
-        System.out.println("2");
+
         BookingRequest bookingReq = req.getBookingRequest();
-        if (bookingReq.getNoOfSeats() <= 0 || bookingReq.getPassengers() == null || bookingReq.getPassengers().isEmpty()) {
+
+        if (bookingReq.getNoOfSeats() <= 0 ||
+                bookingReq.getPassengers() == null ||
+                bookingReq.getPassengers().isEmpty()) {
+
+            log.error("Invalid booking details");
             throw new IllegalArgumentException("Invalid booking details");
         }
 
         Payment payment = paymentRepo.findByOrderId(req.getOrderId())
-                .orElseThrow(() -> new RuntimeException("Payment not found for orderId: " + req.getOrderId()));
-        System.out.println("3");
+                .orElseThrow(() -> new RuntimeException("Payment not found"));
+
+        log.info("Payment record found for orderId={}", req.getOrderId());
+
         Reservation res = new Reservation();
         res.setReservationId(UUID.randomUUID().toString());
         res.setUserId(bookingReq.getUserId());
@@ -126,34 +150,56 @@ public class BookingService {
         res.setBookingStatus(1);
 
         reservationRepo.save(res);
-        System.out.println("4");
+
+        log.info("Reservation saved successfully. ReservationId={}", res.getReservationId());
+
         List<PassengerDTO> passengerList = new ArrayList<>();
+
         int seatNo = 1;
+
         for (PassengerDTO p : bookingReq.getPassengers()) {
+
             Passenger passenger = new Passenger();
             passenger.setReservationId(res.getReservationId());
             passenger.setName(p.getName());
             passenger.setGender(p.getGender());
             passenger.setAge(p.getAge());
             passenger.setSeatNo(seatNo++);
+
             passengerRepo.save(passenger);
             passengerList.add(p);
         }
-        System.out.println("5");
-        flightClient.updateSeats(bookingReq.getScheduleId(), bookingReq.getNoOfSeats());
-        System.out.println("6");
+
+        log.info("Passengers saved successfully");
+
+        flightClient.updateSeats(
+                bookingReq.getScheduleId(),
+                bookingReq.getNoOfSeats()
+        );
+
+        log.info("Flight seats updated successfully");
+
         payment.setReservationId(res.getReservationId());
         paymentRepo.save(payment);
-        System.out.println("7");
+
+        log.info("Payment updated with reservationId");
+
         try {
-            userClient.transferMoney(res.getUserId(), res.getTotalFare());
-            System.out.println("8 - Money transfer successful");
+            userClient.transferMoney(
+                    res.getUserId(),
+                    res.getTotalFare()
+            );
+
+            log.info("Money transferred successfully for userId={}", res.getUserId());
+
         } catch (Exception e) {
-            System.err.println("Money transfer failed for userId=" + res.getUserId() + ", amount=" + res.getTotalFare() + ". Error: " + e.getMessage());
-            // Optionally, mark the reservation as pending or notify admin
-            // For now, proceed with booking completion
+
+            log.error("Money transfer failed for userId={}, amount={}, error={}",
+                    res.getUserId(),
+                    res.getTotalFare(),
+                    e.getMessage());
         }
-        System.out.println("8");
+
         TicketResponse response = new TicketResponse();
         response.setReservationId(res.getReservationId());
         response.setUserId(res.getUserId());
@@ -163,30 +209,54 @@ public class BookingService {
         response.setTotalFare(res.getTotalFare());
         response.setPassengers(passengerList);
 
-        System.out.println("confirmBooking completed for reservationId=" + res.getReservationId());
+        log.info("confirmBooking completed successfully for reservationId={}",
+                res.getReservationId());
+
         return response;
     }
- // Add these methods to your BookingService.java
 
- // 🔥 CREATE WALLET TOP-UP ORDER
- public String createWalletOrder(Double amount) {
-     String userEmail = getLoggedInUserEmail();
-     // Get userId from user service
-     System.out.println("It is working go for user details"+userEmail);
-     String userId =" ";
-     try {
-    	 userId = userClient.getUserIdByEmail(userEmail);
-     }
-     catch (Exception e){
-    	 System.out.println("User not found");
-     }
-     return paymentService.createWalletOrder(amount, userId);
- }
+    // 🔥 CREATE WALLET TOP-UP ORDER
+    public String createWalletOrder(Double amount) {
 
- // 🔥 CONFIRM WALLET TOP-UP
- public boolean confirmWalletTopup(String orderId, String paymentId, String signature) {
-     String userEmail = getLoggedInUserEmail();
-     String userId = userClient.getUserIdByEmail(userEmail);
-     return paymentService.verifyWalletPayment(orderId, paymentId, signature, userId);
- }
+        String userEmail = getLoggedInUserEmail();
+
+        log.info("Creating wallet order for userEmail={}, amount={}", userEmail, amount);
+
+        String userId = "";
+
+        try {
+            userId = userClient.getUserIdByEmail(userEmail);
+            log.info("UserId fetched successfully: {}", userId);
+
+        } catch (Exception e) {
+            log.error("User not found for email={}", userEmail);
+        }
+
+        String orderId = paymentService.createWalletOrder(amount, userId);
+
+        log.info("Wallet top-up order created successfully. OrderId={}", orderId);
+
+        return orderId;
+    }
+
+    // 🔥 CONFIRM WALLET TOP-UP
+    public boolean confirmWalletTopup(String orderId, String paymentId, String signature) {
+
+        String userEmail = getLoggedInUserEmail();
+
+        log.info("Wallet payment verification started for email={}", userEmail);
+
+        String userId = userClient.getUserIdByEmail(userEmail);
+
+        boolean result = paymentService.verifyWalletPayment(
+                orderId,
+                paymentId,
+                signature,
+                userId
+        );
+
+        log.info("Wallet top-up verification result: {}", result);
+
+        return result;
+    }
 }

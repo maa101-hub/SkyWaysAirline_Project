@@ -8,6 +8,8 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import com.razorpay.RazorpayClient;
 @Service
 public class PaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentService.class);
+
     @Value("${razorpay.key.id}")
     private String keyId;
 
@@ -29,24 +33,25 @@ public class PaymentService {
 
     @Autowired
     private PaymentRepository paymentRepo;
-   
-    @Autowired private UserClient userClient;
+
+    @Autowired
+    private UserClient userClient;
+
     // 🔥 CREATE ORDER
     public String createOrder(double amount) {
 
         try {
-        	System.out.println("Creating Razorpay order for amount: " + amount);
+            log.info("Creating Razorpay order for amount: {}", amount);
 
             RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
             JSONObject options = new JSONObject();
-            options.put("amount", (int)(amount * 100)); // paise
+            options.put("amount", (int) (amount * 100));
             options.put("currency", "INR");
             options.put("receipt", "txn_" + UUID.randomUUID());
 
             Order order = client.orders.create(options);
 
-            // save DB
             Payment payment = new Payment();
             payment.setOrderId(order.get("id"));
             payment.setAmount(amount);
@@ -54,132 +59,155 @@ public class PaymentService {
             payment.setPaymentDate(LocalDateTime.now());
 
             paymentRepo.save(payment);
-            System.out.println("Order created and saved: " + order.get("id"));
+
+            log.info("Razorpay order created successfully. OrderId: {}", order.get("id").toString());
+
             return order.get("id");
 
         } catch (Exception e) {
-            System.err.println("Razorpay createOrder error: " + e.getMessage());
+            log.error("Razorpay createOrder error: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to create Razorpay order: " + e.getMessage());
         }
     }
 
     // 🔥 VERIFY PAYMENT
- // ...existing code...
+    public boolean verifyPayment(String orderId, String paymentId, String signature) {
 
- // 🔥 VERIFY PAYMENT (updated for hex encoding)
- public boolean verifyPayment(String orderId, String paymentId, String signature) {
-     try {
-         String data = orderId + "|" + paymentId;
-        System.out.println(orderId+" "+paymentId+"signature");
-         Mac mac = Mac.getInstance("HmacSHA256");
-         mac.init(new SecretKeySpec(keySecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        try {
+            log.info("Verifying payment for OrderId: {}, PaymentId: {}", orderId, paymentId);
 
-         byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-         String generatedSignature = bytesToHex(hash);  // Use hex instead of Base64
+            String data = orderId + "|" + paymentId;
 
-         System.out.println("Generated signature: " + generatedSignature);
-         System.out.println("Received signature: " + signature);
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(
+                    keySecret.getBytes(StandardCharsets.UTF_8),
+                    "HmacSHA256"
+            ));
 
-         if (!generatedSignature.equals(signature)) {
-             System.err.println("Signature mismatch!");
-             return false;
-         }
+            byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            String generatedSignature = bytesToHex(hash);
 
-         Payment payment = paymentRepo.findByOrderId(orderId)
-                 .orElseThrow(() -> new RuntimeException("Order not found"));
+            log.info("Generated signature created");
 
-         payment.setTransactionId(paymentId);
-         payment.setPaymentStatus("SUCCESS");
-         payment.setPaymentDate(LocalDateTime.now());
-         paymentRepo.save(payment);
+            if (!generatedSignature.equals(signature)) {
+                log.error("Payment signature mismatch for OrderId: {}", orderId);
+                return false;
+            }
 
-         return true;
+            Payment payment = paymentRepo.findByOrderId(orderId)
+                    .orElseThrow(() -> new RuntimeException("Order not found"));
 
-     } catch (Exception e) {
-         System.err.println("Verification failed: " + e.getMessage());
-         throw new RuntimeException("Verification failed", e);
-     }
- }
-//Add these methods to your PaymentService.java
+            payment.setTransactionId(paymentId);
+            payment.setPaymentStatus("SUCCESS");
+            payment.setPaymentDate(LocalDateTime.now());
 
-//🔥 CREATE WALLET TOP-UP ORDER
-public String createWalletOrder(Double amount, String userId) {
-  try {
-      System.out.println("Creating Razorpay wallet order for amount: " + amount + " userId: " + userId);
+            paymentRepo.save(payment);
 
-      RazorpayClient client = new RazorpayClient(keyId, keySecret);
+            log.info("Payment verified successfully for OrderId: {}", orderId);
 
-      JSONObject options = new JSONObject();
-      options.put("amount", (int)(amount * 100)); // paise
-      options.put("currency", "INR");
-      String receipt = "WALLET_" + System.currentTimeMillis();
-      options.put("receipt", receipt);
+            return true;
 
-      Order order = client.orders.create(options);
+        } catch (Exception e) {
+            log.error("Verification failed for OrderId {} : {}", orderId, e.getMessage(), e);
+            throw new RuntimeException("Verification failed", e);
+        }
+    }
 
-      // save DB with wallet type
-      Payment payment = new Payment();
-      payment.setOrderId(order.get("id"));
-      payment.setAmount(amount);
-      payment.setPaymentStatus("PENDING");
-      payment.setPaymentDate(LocalDateTime.now());
-      payment.setUserId(userId); // Add userId field to Payment model
-      payment.setPaymentType("WALLET_TOPUP"); // Add paymentType field
+    // 🔥 CREATE WALLET TOP-UP ORDER
+    public String createWalletOrder(Double amount, String userId) {
 
-      paymentRepo.save(payment);
-      System.out.println("Wallet order created and saved: " + order.get("id"));
-      return order.get("id");
+        try {
+            log.info("Creating wallet top-up order for UserId: {}, Amount: {}", userId, amount);
 
-  } catch (Exception e) {
-      System.err.println("Razorpay createWalletOrder error: " + e.getMessage());
-      throw new RuntimeException("Failed to create Razorpay wallet order: " + e.getMessage());
-  }
-}
+            RazorpayClient client = new RazorpayClient(keyId, keySecret);
 
-//🔥 VERIFY WALLET PAYMENT
-public boolean verifyWalletPayment(String orderId, String paymentId, String signature, String userId) {
-  try {
-	  String data = orderId + "|" + paymentId;
-      System.out.println(data);
-      Mac mac = Mac.getInstance("HmacSHA256");
-      mac.init(new SecretKeySpec(keySecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            JSONObject options = new JSONObject();
+            options.put("amount", (int) (amount * 100));
+            options.put("currency", "INR");
 
-      byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-      String generatedSignature = bytesToHex(hash);  // Use hex instead of Base64
+            String receipt = "WALLET_" + System.currentTimeMillis();
+            options.put("receipt", receipt);
 
-      System.out.println("Generated signature: " + generatedSignature);
-      System.out.println("Received signature: " + signature);
+            Order order = client.orders.create(options);
 
-      if (!generatedSignature.equals(signature)) {
-          System.err.println("Wallet payment signature mismatch!");
-          return false;
-      }
+            Payment payment = new Payment();
+            payment.setOrderId(order.get("id"));
+            payment.setAmount(amount);
+            payment.setPaymentStatus("PENDING");
+            payment.setPaymentDate(LocalDateTime.now());
+            payment.setUserId(userId);
+            payment.setPaymentType("WALLET_TOPUP");
 
-      Payment payment = paymentRepo.findByOrderId(orderId)
-              .orElseThrow(() -> new RuntimeException("Wallet order not found"));
+            paymentRepo.save(payment);
 
-      payment.setTransactionId(paymentId);
-      payment.setPaymentStatus("SUCCESS");
-      payment.setPaymentDate(LocalDateTime.now());
-      paymentRepo.save(payment);
+            log.info("Wallet order created successfully. OrderId: {}", order.get("id").toString());
 
-      // Update user wallet balance via user service
-      userClient.addWalletMoney(userId, payment.getAmount());
-      
-      return true;
+            return order.get("id");
 
-  } catch (Exception e) {
-      System.err.println("Wallet verification failed: " + e.getMessage());
-      throw new RuntimeException("Wallet verification failed", e);
-  }
-}
+        } catch (Exception e) {
+            log.error("Razorpay createWalletOrder error: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to create Razorpay wallet order: " + e.getMessage());
+        }
+    }
 
- // Helper method to convert bytes to hex
- private String bytesToHex(byte[] bytes) {
-     StringBuilder sb = new StringBuilder();
-     for (byte b : bytes) {
-         sb.append(String.format("%02x", b));
-     }
-     return sb.toString();
- }
+    // 🔥 VERIFY WALLET PAYMENT
+    public boolean verifyWalletPayment(
+            String orderId,
+            String paymentId,
+            String signature,
+            String userId) {
+
+        try {
+            log.info("Verifying wallet payment for OrderId: {}, UserId: {}", orderId, userId);
+
+            String data = orderId + "|" + paymentId;
+
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(
+                    keySecret.getBytes(StandardCharsets.UTF_8),
+                    "HmacSHA256"
+            ));
+
+            byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            String generatedSignature = bytesToHex(hash);
+
+            if (!generatedSignature.equals(signature)) {
+                log.error("Wallet payment signature mismatch for OrderId: {}", orderId);
+                return false;
+            }
+
+            Payment payment = paymentRepo.findByOrderId(orderId)
+                    .orElseThrow(() -> new RuntimeException("Wallet order not found"));
+
+            payment.setTransactionId(paymentId);
+            payment.setPaymentStatus("SUCCESS");
+            payment.setPaymentDate(LocalDateTime.now());
+
+            paymentRepo.save(payment);
+
+            log.info("Wallet payment marked successful. Updating wallet balance.");
+
+            userClient.addWalletMoney(userId, payment.getAmount());
+
+            log.info("Wallet balance updated successfully for UserId: {}", userId);
+
+            return true;
+
+        } catch (Exception e) {
+            log.error("Wallet verification failed for OrderId {} : {}", orderId, e.getMessage(), e);
+            throw new RuntimeException("Wallet verification failed", e);
+        }
+    }
+
+    // Helper method
+    private String bytesToHex(byte[] bytes) {
+
+        StringBuilder sb = new StringBuilder();
+
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+
+        return sb.toString();
+    }
 }

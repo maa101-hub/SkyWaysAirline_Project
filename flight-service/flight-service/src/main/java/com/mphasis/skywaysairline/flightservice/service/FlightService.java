@@ -11,6 +11,13 @@ import org.springframework.stereotype.Service;
 import com.mphasis.skywaysairline.flightservice.dto.FlightRequest;
 import com.mphasis.skywaysairline.flightservice.dto.FlightResponse;
 import com.mphasis.skywaysairline.flightservice.dto.FlightSearchRequest;
+import com.mphasis.skywaysairline.flightservice.exception.FlightAlreadyExistsException;
+import com.mphasis.skywaysairline.flightservice.exception.FlightNotFoundException;
+import com.mphasis.skywaysairline.flightservice.exception.InvalidFlightDataException;
+import com.mphasis.skywaysairline.flightservice.exception.NoRoutesFoundException;
+import com.mphasis.skywaysairline.flightservice.exception.RouteNotFoundException;
+import com.mphasis.skywaysairline.flightservice.exception.ScheduleNotFoundException;
+import com.mphasis.skywaysairline.flightservice.exception.SeatsUnavailableException;
 import com.mphasis.skywaysairline.flightservice.models.Flight;
 import com.mphasis.skywaysairline.flightservice.models.Route;
 import com.mphasis.skywaysairline.flightservice.models.Schedule;
@@ -21,102 +28,197 @@ import com.mphasis.skywaysairline.flightservice.repo.ScheduleRepository;
 @Service
 public class FlightService {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(FlightService.class);
+
     @Autowired
     private FlightRepository flightRepo;
+
     @Autowired
     private RouteRepository routeRepo;
+
     @Autowired
     private ScheduleRepository scheduleRepo;
-    private static final Logger log = LoggerFactory.getLogger(FlightService.class);
-    // 🔁 ENTITY → DTO
+
+    // ENTITY -> DTO
     private FlightRequest convertToDTO(Flight flight) {
-    	FlightRequest dto = new FlightRequest();
+
+        FlightRequest dto = new FlightRequest();
+
         dto.setFlightId(flight.getFlightId());
         dto.setFlightName(flight.getFlightName());
         dto.setSeatingCapacity(flight.getSeatingCapacity());
         dto.setReservationCapacity(flight.getReservationCapacity());
+
         return dto;
     }
 
-    // 🔁 DTO → ENTITY
+    // DTO -> ENTITY
     private Flight convertToEntity(FlightRequest dto) {
+
         Flight flight = new Flight();
+
         flight.setFlightId(dto.getFlightId());
         flight.setFlightName(dto.getFlightName());
         flight.setSeatingCapacity(dto.getSeatingCapacity());
         flight.setReservationCapacity(dto.getReservationCapacity());
+
         return flight;
     }
 
-    // ✅ ADD
+    // ADD
     public FlightRequest addFlight(FlightRequest dto) {
-    	log.info("Adding flight: {}", dto.getFlightName());
 
-        Flight flight = convertToEntity(dto);
-        Flight saved = flightRepo.save(flight);
+        log.info("Adding flight: {}", dto.getFlightName());
 
-        log.info("Flight saved with id: {}", saved.getFlightId());
+        if (dto.getSeatingCapacity() <= 0) {
+            log.warn("Invalid seating capacity");
+            throw new InvalidFlightDataException("Invalid seating capacity");
+        }
+
+        if (flightRepo.existsById(dto.getFlightId())) {
+            log.warn("Flight already exists: {}", dto.getFlightId());
+            throw new FlightAlreadyExistsException("Flight already exists");
+        }
+
+        Flight saved = flightRepo.save(convertToEntity(dto));
+
+        log.info("Flight saved successfully. FlightId: {}",
+                saved.getFlightId());
 
         return convertToDTO(saved);
     }
 
-    // ✅ UPDATE
-    public FlightRequest updateFlight(String id, FlightRequest dto) {
+    // UPDATE
+    public FlightRequest updateFlight(
+            String id,
+            FlightRequest dto) {
+
+        log.info("Updating flight. FlightId: {}", id);
 
         Flight existing = flightRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Flight not found"));
+                .orElseThrow(() -> {
+                    log.warn("Flight not found: {}", id);
+                    return new FlightNotFoundException("Flight not found");
+                });
 
         existing.setFlightName(dto.getFlightName());
         existing.setSeatingCapacity(dto.getSeatingCapacity());
 
-        return convertToDTO(flightRepo.save(existing));
+        Flight updated = flightRepo.save(existing);
+
+        log.info("Flight updated successfully. FlightId: {}", id);
+
+        return convertToDTO(updated);
     }
 
-    // ✅ DELETE
+    // DELETE
     public void deleteFlight(String id) {
+
+        log.info("Deleting flight. FlightId: {}", id);
+
+        if (!flightRepo.existsById(id)) {
+            log.warn("Flight not found for delete: {}", id);
+            throw new FlightNotFoundException("Flight not found");
+        }
+
         flightRepo.deleteById(id);
+
+        log.info("Flight deleted successfully. FlightId: {}", id);
     }
 
-    // ✅ GET ALL
+    // GET ALL
     public List<FlightRequest> getAllFlights() {
-        return flightRepo.findAll()
-                .stream()
-                .map(this::convertToDTO)
-                .toList();
+
+        log.info("Fetching all flights");
+
+        List<FlightRequest> flights =
+                flightRepo.findAll()
+                        .stream()
+                        .map(this::convertToDTO)
+                        .toList();
+
+        log.info("Flights fetched successfully. Count: {}",
+                flights.size());
+
+        return flights;
     }
 
-    // ✅ SEARCH BY NAME
-    public List<FlightRequest> searchByName(String name) {
-        return flightRepo.findByFlightNameContaining(name)
-                .stream()
-                .map(this::convertToDTO)
-                .toList();
+    // SEARCH BY NAME
+    public List<FlightRequest> searchByName(
+            String name) {
+
+        log.info("Searching flights by name: {}", name);
+
+        List<FlightRequest> result =
+                flightRepo.findByFlightNameContaining(name)
+                        .stream()
+                        .map(this::convertToDTO)
+                        .toList();
+
+        if (result.isEmpty()) {
+            log.warn("No flights found with name: {}", name);
+            throw new FlightNotFoundException("No flights found");
+        }
+
+        log.info("Flight search completed. Name: {}, Count: {}",
+                name,
+                result.size());
+
+        return result;
     }
-    //serch basec on source and destination
-    public List<FlightSearchRequest> searchFlights(String source, String destination) {
 
-        List<FlightSearchRequest> result = new ArrayList<>();
+    // SEARCH BY ROUTE
+    public List<FlightSearchRequest> searchFlights(
+            String source,
+            String destination) {
 
-        // 1. Route find
-        List<Route> routes = routeRepo.findBySourceAndDestination(source, destination);
-        System.out.print(routes);
+        log.info(
+                "Searching flights by route. Source: {}, Destination: {}",
+                source,
+                destination
+        );
+
+        List<FlightSearchRequest> result =
+                new ArrayList<>();
+
+        List<Route> routes =
+                routeRepo.findBySourceAndDestination(
+                        source,
+                        destination
+                );
+
         if (routes.isEmpty()) {
-            throw new RuntimeException("No routes found");
+
+            log.warn(
+                    "No routes found for Source: {}, Destination: {}",
+                    source,
+                    destination
+            );
+
+            throw new NoRoutesFoundException("No routes found");
         }
 
         for (Route route : routes) {
 
-            // 2. Schedule find
-            List<Schedule> schedules = scheduleRepo.findByRouteId(route.getRouteId());
+            List<Schedule> schedules =
+                    scheduleRepo.findByRouteId(
+                            route.getRouteId()
+                    );
 
             for (Schedule schedule : schedules) {
 
-                // 3. Flight find
-                Flight flight = flightRepo.findById(schedule.getFlight().getFlightId())
-                        .orElseThrow(() -> new RuntimeException("Flight not found"));
+                Flight flight =
+                        flightRepo.findById(
+                                schedule.getFlight()
+                                        .getFlightId()
+                        )
+                        .orElseThrow(() ->
+                                new FlightNotFoundException("Flight not found"));
 
-                // 4. DTO mapping
-                FlightSearchRequest dto = new FlightSearchRequest();
+                FlightSearchRequest dto =
+                        new FlightSearchRequest();
+
                 dto.setFlightName(flight.getFlightName());
                 dto.setSource(route.getSource());
                 dto.setDestination(route.getDestination());
@@ -127,45 +229,105 @@ public class FlightService {
                 dto.setTravelDuration(schedule.getTravelDuration());
                 dto.setDistance(route.getDistance());
                 dto.setFlightId(schedule.getScheduleId());
+
                 result.add(dto);
             }
         }
-        
+
+        log.info(
+                "Route search completed successfully. Results: {}",
+                result.size()
+        );
 
         return result;
     }
-    public FlightResponse getFlightDetails(String scheduleId) {
-         System.out.print(scheduleId);
-        Schedule schedule = scheduleRepo.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("Schedule not found"));
 
-        Route route = routeRepo.findById(schedule.getRoute().getRouteId())
-                .orElseThrow(() -> new RuntimeException("Route not found"));
+    // GET FLIGHT DETAILS
+    public FlightResponse getFlightDetails(
+            String scheduleId) {
 
-        Flight flight = flightRepo.findById(schedule.getFlight().getFlightId())
-                .orElseThrow(() -> new RuntimeException("Flight not found"));
+        log.info(
+                "Fetching flight details for ScheduleId: {}",
+                scheduleId
+        );
 
-        FlightResponse res = new FlightResponse();
+        Schedule schedule =
+                scheduleRepo.findById(scheduleId)
+                        .orElseThrow(() ->
+                                new ScheduleNotFoundException("Schedule not found"));
+
+        Route route =
+                routeRepo.findById(
+                        schedule.getRoute().getRouteId()
+                )
+                .orElseThrow(() ->
+                        new RouteNotFoundException("Route not found"));
+
+        Flight flight =
+                flightRepo.findById(
+                        schedule.getFlight().getFlightId()
+                )
+                .orElseThrow(() ->
+                        new FlightNotFoundException("Flight not found"));
+
+        FlightResponse res =
+                new FlightResponse();
+
         res.setFare(route.getFare());
-        res.setAvailableSeats(flight.getSeatingCapacity());
+        res.setAvailableSeats(
+                flight.getSeatingCapacity()
+        );
+
+        log.info(
+                "Flight details fetched successfully for ScheduleId: {}",
+                scheduleId
+        );
 
         return res;
     }
-    public void updateSeats(String scheduleId, int seatsBooked) {
 
-        Schedule schedule = scheduleRepo.findById(scheduleId)
-                .orElseThrow(() -> new RuntimeException("Schedule not found"));
+    // UPDATE SEATS
+    public void updateSeats(
+            String scheduleId,
+            int seatsBooked) {
 
-        Flight flight = schedule.getFlight();
+        log.info(
+                "Updating seats. ScheduleId: {}, SeatsBooked: {}",
+                scheduleId,
+                seatsBooked
+        );
 
-        int available = flight.getSeatingCapacity();
+        Schedule schedule =
+                scheduleRepo.findById(scheduleId)
+                        .orElseThrow(() ->
+                                new ScheduleNotFoundException("Schedule not found"));
+
+        Flight flight =
+                schedule.getFlight();
+
+        int available =
+                flight.getSeatingCapacity();
 
         if (available < seatsBooked) {
-            throw new RuntimeException("Not enough seats");
+
+            log.warn(
+                    "Not enough seats. Available: {}, Requested: {}",
+                    available,
+                    seatsBooked
+            );
+
+            throw new SeatsUnavailableException("Not enough seats");
         }
 
-        flight.setSeatingCapacity(available - seatsBooked);
+        flight.setSeatingCapacity(
+                available - seatsBooked
+        );
 
         flightRepo.save(flight);
+
+        log.info(
+                "Seats updated successfully. Remaining Seats: {}",
+                flight.getSeatingCapacity()
+        );
     }
 }

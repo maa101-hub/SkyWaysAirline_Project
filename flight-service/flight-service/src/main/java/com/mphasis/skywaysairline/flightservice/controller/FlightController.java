@@ -2,19 +2,13 @@ package com.mphasis.skywaysairline.flightservice.controller;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.mphasis.skywaysairline.flightservice.dto.FlightRequest;
 import com.mphasis.skywaysairline.flightservice.dto.FlightResponse;
@@ -29,6 +23,9 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/flights")
 public class FlightController {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(FlightController.class);
+
     @Autowired
     private FlightService service;
 
@@ -38,7 +35,11 @@ public class FlightController {
     public ResponseEntity<ApiResponse<FlightRequest>> addFlight(
             @Valid @RequestBody FlightRequest dto) {
 
+        log.info("Add Flight API called for flightName: {}", dto.getFlightName());
+
         FlightRequest saved = service.addFlight(dto);
+
+        log.info("Flight added successfully");
 
         return ResponseEntity.ok(
                 new ApiResponse<>("Flight added successfully", saved)
@@ -52,14 +53,27 @@ public class FlightController {
             @PathVariable String id,
             @Valid @RequestBody FlightRequest dto) {
 
-        return ResponseEntity.ok(service.updateFlight(id, dto));
+        log.info("Update Flight API called for flightId: {}", id);
+
+        FlightRequest updated = service.updateFlight(id, dto);
+
+        log.info("Flight updated successfully for flightId: {}", id);
+
+        return ResponseEntity.ok(updated);
     }
 
     // ✅ DELETE
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteFlight(@PathVariable String id) {
+    public ResponseEntity<String> deleteFlight(
+            @PathVariable String id) {
+
+        log.info("Delete Flight API called for flightId: {}", id);
+
         service.deleteFlight(id);
+
+        log.info("Flight deleted successfully for flightId: {}", id);
+
         return ResponseEntity.ok("Flight deleted successfully");
     }
 
@@ -67,33 +81,92 @@ public class FlightController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<FlightRequest>>> getAllFlights() {
 
+        log.info("Get All Flights API called");
+
+        List<FlightRequest> flights = service.getAllFlights();
+
+        log.info("Flights fetched successfully. Count: {}", flights.size());
+
         return ResponseEntity.ok(
-                new ApiResponse<>("Flights fetched", service.getAllFlights())
+                new ApiResponse<>("Flights fetched", flights)
         );
     }
 
-    // ✅ SEARCH
+    // ✅ SEARCH BY NAME
     @GetMapping("/searchByName")
-    public List<FlightRequest> searchByName(@RequestParam String name) {
-        return service.searchByName(name);
+    public List<FlightRequest> searchByName(
+            @RequestParam String name) {
+
+        log.info("Search Flight By Name API called. Name: {}", name);
+
+        List<FlightRequest> result =
+                service.searchByName(name);
+
+        log.info("Search completed for name: {}, Results: {}",
+                name, result.size());
+
+        return result;
     }
+
+    // ✅ SEARCH BY ROUTE
     @GetMapping("/searchByRoute")
     public List<FlightSearchRequest> searchByRoute(
             @RequestParam String source,
             @RequestParam String destination) {
 
-        return service.searchFlights(source, destination);
-    }
-    @GetMapping("/details/{scheduleId}")
-    public ResponseEntity<FlightResponse> getDetails(@PathVariable String scheduleId) {
+        log.info(
+                "Search By Route API called. Source: {}, Destination: {}",
+                source,
+                destination
+        );
 
-        return ResponseEntity.ok(service.getFlightDetails(scheduleId));
+        List<FlightSearchRequest> result =
+                service.searchFlights(source, destination);
+
+        log.info(
+                "Route search completed. Source: {}, Destination: {}, Results: {}",
+                source,
+                destination,
+                result.size()
+        );
+
+        return result;
     }
+
+    // ✅ DETAILS
+    @GetMapping("/details/{scheduleId}")
+    public ResponseEntity<FlightResponse> getDetails(
+            @PathVariable String scheduleId) {
+
+        log.info("Get Flight Details API called for scheduleId: {}", scheduleId);
+
+        FlightResponse response =
+                service.getFlightDetails(scheduleId);
+
+        log.info("Flight details fetched successfully for scheduleId: {}", scheduleId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ✅ UPDATE SEATS
     @PutMapping("/updateSeats/{scheduleId}")
     public ResponseEntity<String> updateSeats(
             @PathVariable String scheduleId,
             @RequestParam int seatsBooked) {
-    	service.updateSeats(scheduleId, seatsBooked);
+
+        log.info(
+                "Update Seats API called. ScheduleId: {}, SeatsBooked: {}",
+                scheduleId,
+                seatsBooked
+        );
+
+        service.updateSeats(scheduleId, seatsBooked);
+
+        log.info(
+                "Seats updated successfully. ScheduleId: {}, SeatsBooked: {}",
+                scheduleId,
+                seatsBooked
+        );
 
         return ResponseEntity.ok("Seats updated successfully");
     }

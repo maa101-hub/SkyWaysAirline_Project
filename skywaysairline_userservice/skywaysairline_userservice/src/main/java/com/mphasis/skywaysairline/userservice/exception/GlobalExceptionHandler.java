@@ -1,5 +1,7 @@
 package com.mphasis.skywaysairline.userservice.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,8 +14,12 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     // Custom response structure
     static class ErrorResponse {
+
         public String message;
         public int status;
         public LocalDateTime time;
@@ -26,7 +32,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleUserNotFound(UserNotFoundException ex) {
+    public ResponseEntity<ErrorResponse> handleUserNotFound(
+            UserNotFoundException ex) {
+
+        log.warn("UserNotFoundException occurred: {}", ex.getMessage());
+
         return new ResponseEntity<>(
                 new ErrorResponse(ex.getMessage(), 404),
                 HttpStatus.NOT_FOUND
@@ -34,7 +44,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidPasswordException.class)
-    public ResponseEntity<ErrorResponse> handleInvalidPassword(InvalidPasswordException ex) {
+    public ResponseEntity<ErrorResponse> handleInvalidPassword(
+            InvalidPasswordException ex) {
+
+        log.warn("InvalidPasswordException occurred: {}", ex.getMessage());
+
         return new ResponseEntity<>(
                 new ErrorResponse(ex.getMessage(), 401),
                 HttpStatus.UNAUTHORIZED
@@ -42,7 +56,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(UserAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleUserExists(UserAlreadyExistsException ex) {
+    public ResponseEntity<ErrorResponse> handleUserExists(
+            UserAlreadyExistsException ex) {
+
+        log.warn("UserAlreadyExistsException occurred: {}", ex.getMessage());
+
         return new ResponseEntity<>(
                 new ErrorResponse(ex.getMessage(), 409),
                 HttpStatus.CONFLICT
@@ -50,7 +68,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
+    public ResponseEntity<ErrorResponse> handleBadRequest(
+            BadRequestException ex) {
+
+        log.warn("BadRequestException occurred: {}", ex.getMessage());
+
         return new ResponseEntity<>(
                 new ErrorResponse(ex.getMessage(), 400),
                 HttpStatus.BAD_REQUEST
@@ -59,21 +81,37 @@ public class GlobalExceptionHandler {
 
     // Generic fallback
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGlobal(Exception ex) {
+    public ResponseEntity<ErrorResponse> handleGlobal(
+            Exception ex) {
+
+        log.error("Unhandled Exception occurred: {}", ex.getMessage(), ex);
+
         return new ResponseEntity<>(
                 new ErrorResponse(ex.getMessage(), 500),
                 HttpStatus.INTERNAL_SERVER_ERROR
         );
     }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<?> handleValidation(MethodArgumentNotValidException ex) {
+    public ResponseEntity<?> handleValidation(
+            MethodArgumentNotValidException ex) {
 
         Map<String, String> errors = new HashMap<>();
 
-        ex.getBindingResult().getFieldErrors().forEach(error -> {
-            errors.put(error.getField(), error.getDefaultMessage());
-        });
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(error -> {
+                    errors.put(
+                            error.getField(),
+                            error.getDefaultMessage()
+                    );
+                });
 
-        return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
+        log.warn("Validation failed: {}", errors);
+
+        return new ResponseEntity<>(
+                errors,
+                HttpStatus.BAD_REQUEST
+        );
     }
 }
