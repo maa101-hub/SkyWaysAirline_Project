@@ -34,6 +34,40 @@ function getInitials(name) {
   return name.slice(0, 2).toUpperCase();
 }
 
+function formatDobForUserId(dobValue) {
+  if (!dobValue) return "";
+
+  const raw = String(dobValue).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [year, month, day] = raw.split("-");
+    return `${year}${day}${month}`;
+  }
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+    const [day, month, year] = raw.split("/");
+    return `${year}${day}${month}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const year = parsed.getFullYear();
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  return `${year}${day}${month}`;
+}
+
+function getShortUserId(profile) {
+  if (!profile) return "—";
+
+  const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim();
+  const initials = getInitials(fullName || profile.name || "User");
+  const dobPart = formatDobForUserId(profile.dob || profile.dateOfBirth || profile.birthDate);
+
+  return initials && dobPart ? `${initials}${dobPart}` : profile.userId || profile.id || "—";
+}
+
 function calcArrival(departure, durationMins) {
   const [h, m] = departure.split(":").map(Number);
   const total  = h * 60 + m + Number(durationMins);
@@ -275,6 +309,7 @@ useEffect(() => {
     .map((w) => w[0])
     .join("")
     .toUpperCase();
+  const shortUserId = getShortUserId(profile);
 
   return (
     <div className="pf-overlay" onClick={onClose}>
@@ -314,7 +349,7 @@ useEffect(() => {
               </div>
               <div className="pf-avatar-info">
                 <p className="pf-display-name">{displayName}</p>
-                <p className="pf-user-id">ID: {profile.userId || profile.id || "—"}</p>
+                <p className="pf-user-id">ID: {shortUserId}</p>
               </div>
             </div>
 

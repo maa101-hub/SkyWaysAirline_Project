@@ -185,10 +185,12 @@
 /* Table */
 .table-wrap {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 18px; overflow: hidden;
+  border-radius: 18px; overflow-x: auto; overflow-y: hidden;
 }
 .data-table {
-  width: 100%; border-collapse: collapse; font-size: 0.88rem;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
 }
 .data-table thead {
   background: rgba(79,163,227,0.08);
@@ -200,13 +202,24 @@
   color: var(--muted); letter-spacing: 0.8px; text-transform: uppercase;
 }
 .data-table td {
-  padding: 14px 20px; border-bottom: 1px solid rgba(79,163,227,0.07);
-  color: var(--text); vertical-align: middle;
+  padding: 16px 20px;
+  color: var(--text);
+  vertical-align: top;
+  border-bottom: 1px solid rgba(79,163,227,0.07);
 }
-.data-table tr:last-child td { border-bottom: none; }
-.data-table tbody tr { transition: background 0.15s; }
-.data-table tbody tr:hover { background: rgba(79,163,227,0.04); }
+.data-table tbody tr { transition: transform 0.15s ease; }
+.data-table tbody tr:hover { transform: none; }
+.data-table tbody tr:hover td { background: rgba(79,163,227,0.04); }
+.data-table tbody tr:last-child td { border-bottom: none; }
 .empty-row { text-align: center !important; color: var(--muted) !important; padding: 40px !important; }
+
+.data-table tbody tr:not(:last-child) td {
+  border-bottom: 1px solid rgba(79,163,227,0.18);
+}
+
+.data-table tbody tr td {
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.03);
+}
 
 /* Badges */
 .id-badge {
@@ -577,6 +590,148 @@
 .quick-val { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--text); }
 .quick-val.warn { color: var(--red); }
 
+/* ── Bookings tab ── */
+.booking-highlight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.booking-summary-card {
+  background: linear-gradient(135deg, rgba(79,163,227,0.12), rgba(240,165,0,0.08));
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px 22px;
+}
+
+.booking-summary-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 8px;
+}
+
+.booking-summary-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.55rem;
+  color: var(--text);
+  line-height: 1.15;
+}
+
+.booking-summary-title span {
+  font-size: 0.95rem;
+  color: var(--sky-l);
+}
+
+.booking-summary-meta {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.booking-flight-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 150px;
+}
+
+.booking-flight-id {
+  color: var(--sky-l);
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.booking-flight-name {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.booking-route-cell {
+  min-width: 220px;
+}
+
+.booking-route-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.booking-route-item {
+  display: block;
+}
+
+.booking-route-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.booking-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.booking-count.booked {
+  background: rgba(79,163,227,0.12);
+  border: 1px solid rgba(79,163,227,0.25);
+  color: var(--sky-l);
+}
+
+.booking-count.remaining {
+  background: rgba(76,175,125,0.12);
+  border: 1px solid rgba(76,175,125,0.25);
+  color: var(--green);
+}
+
+.booking-count.full {
+  background: rgba(224,85,85,0.12);
+  border: 1px solid rgba(224,85,85,0.25);
+  color: #ff9b9b;
+}
+
+.occupancy-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 150px;
+}
+
+.occupancy-cell span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.occupancy-bar {
+  width: 100px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.06);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.occupancy-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--green), var(--sky));
+}
+
+.occupancy-fill.danger {
+  background: linear-gradient(90deg, var(--accent), var(--red));
+}
+
 /* ── Users tab ── */
 .del-req-badge {
   background: rgba(224,85,85,0.15);
@@ -621,6 +776,7 @@
 @media (max-width: 1100px) {
   .overview-cards { grid-template-columns: 1fr 1fr; }
   .quick-row      { grid-template-columns: 1fr 1fr; }
+  .booking-highlight-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
   .sidebar { width: 68px; }
@@ -642,4 +798,6 @@
   .data-table th, .data-table td { padding: 10px 12px; }
   .action-btns { flex-direction: column; gap: 4px; }
   .notif-panel { width: calc(100vw - 32px); right: -16px; }
+  .occupancy-cell { min-width: 120px; }
+  .occupancy-bar { width: 72px; }
 }

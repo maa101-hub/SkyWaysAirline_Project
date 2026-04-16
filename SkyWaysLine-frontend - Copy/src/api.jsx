@@ -10,6 +10,11 @@ const flightAPI = axios.create({
   baseURL: "http://localhost:8089",
 });
 
+// ✅ BOOKING SERVICE API (8090)
+const bookingAPI = axios.create({
+  baseURL: "http://localhost:8090",
+});
+
 // 🔐 TOKEN attach (for both APIs)
 const attachToken = (req) => {
   const token = localStorage.getItem("token");
@@ -21,15 +26,17 @@ const attachToken = (req) => {
 
 API.interceptors.request.use(attachToken);
 flightAPI.interceptors.request.use(attachToken);
+bookingAPI.interceptors.request.use(attachToken);
 //Kaithwas
 // RK
 //sourabh bahrijjsafjdjsdfjwsdkf
 //sfrtgr
 //───────── USERS ─────────
 export const getUsers = () => API.get("/api/users/all");
+export const getAllBookings = () => bookingAPI.get("/api/booking/all");
 
 // export both APIs if needed
-export { API, flightAPI };
+export { API, flightAPI, bookingAPI };
 
 //RK
 export const deleteUser = (userId) =>

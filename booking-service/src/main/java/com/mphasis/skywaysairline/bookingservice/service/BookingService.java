@@ -166,4 +166,9 @@ public class BookingService {
         System.out.println("confirmBooking completed for reservationId=" + res.getReservationId());
         return response;
     }
+    //RK
+    public List<Reservation> getAllBookings() {
+        return reservationRepo.findAll();
+    }
+
 }
