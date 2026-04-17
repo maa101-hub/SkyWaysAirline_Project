@@ -190,21 +190,55 @@ public class AuthController {
                     .body("User not found: " + e.getMessage());
         }
     }
+
     @PostMapping("/login/request-otp")
     public ResponseEntity<?> requestOtp(@RequestBody OtpGenerateRequest request) {
-        String response = userService.generateLoginOtp(request.getIdentifier());
-        return ResponseEntity.ok(response);
+
+        log.info("Received OTP request for identifier: {}", request.getIdentifier());
+
+        try {
+            String response = userService.generateLoginOtp(request.getIdentifier());
+
+            log.info("OTP generated successfully for identifier: {}", request.getIdentifier());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+
+            log.error("Failed to generate OTP for identifier: {}. Reason: {}",
+                    request.getIdentifier(), e.getMessage());
+
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", e.getMessage()
+            ));
+        }
     }
 
     @PostMapping("/login/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestBody OtpVerifyRequest request) {
-        String token = userService.verifyLoginOtp(request);
-        return ResponseEntity.ok(Map.of(
-                "token", token,
-                "message", "Login successful"
-        ));
-    }
 
+        log.info("Received OTP verification request for identifier: {}", request.getIdentifier());
+
+        try {
+            String token = userService.verifyLoginOtp(request);
+
+            log.info("Login successful for identifier: {}", request.getIdentifier());
+
+            return ResponseEntity.ok(Map.of(
+                    "token", token,
+                    "message", "Login successful"
+            ));
+
+        } catch (Exception e) {
+
+            log.error("OTP verification failed for identifier: {}. Reason: {}",
+                    request.getIdentifier(), e.getMessage());
+
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", e.getMessage()
+            ));
+        }
+    }
 
 
 }

@@ -352,10 +352,20 @@ public class UserService {
     }
     //otp
     public String generateLoginOtp(String identifier) {
+
+        log.info("Generate login OTP request received for identifier: {}", identifier);
+
         UserCredentials user = credentialsRepo.findByEmailOrMobile(identifier)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> {
+                    log.warn("User not found for identifier: {}", identifier);
+                    return new RuntimeException("User not found");
+                });
+
+        log.info("User found. UserId: {}", user.getUserId());
 
         String otp = String.valueOf((int) (100000 + Math.random() * 900000));
+
+        log.debug("OTP generated for identifier {} : {}", identifier, otp);
 
         OtpDetails otpDetails = new OtpDetails();
         otpDetails.setIdentifier(identifier);
@@ -366,38 +376,61 @@ public class UserService {
 
         otpRepository.save(otpDetails);
 
-        System.out.println("Generated OTP: " + otp);
+        log.info("OTP saved successfully for identifier: {}", identifier);
+        log.info("OTP expires at: {}", otpDetails.getExpiryTime());
 
         return "OTP sent successfully";
     }
 
     public String verifyLoginOtp(OtpVerifyRequest request) {
+
+        log.info("Verify OTP request received for identifier: {}", request.getIdentifier());
+
         OtpDetails otpDetails = otpRepository
                 .findTopByIdentifierAndPurposeAndUsedFalseOrderByIdDesc(
                         request.getIdentifier(),
                         "LOGIN"
                 )
-                .orElseThrow(() -> new RuntimeException("OTP not found"));
+                .orElseThrow(() -> {
+                    log.warn("OTP not found for identifier: {}", request.getIdentifier());
+                    return new RuntimeException("OTP not found");
+                });
+
+        log.info("OTP record found for identifier: {}", request.getIdentifier());
 
         if (otpDetails.getExpiryTime().isBefore(LocalDateTime.now())) {
+            log.warn("OTP expired for identifier: {}", request.getIdentifier());
             throw new RuntimeException("OTP expired");
         }
 
         if (!otpDetails.getOtp().equals(request.getOtp())) {
+            log.warn("Invalid OTP entered for identifier: {}", request.getIdentifier());
             throw new RuntimeException("Invalid OTP");
         }
+
+        log.info("OTP verified successfully for identifier: {}", request.getIdentifier());
 
         otpDetails.setUsed(true);
         otpRepository.save(otpDetails);
 
+        log.info("OTP marked as used for identifier: {}", request.getIdentifier());
+
         UserCredentials user = credentialsRepo.findByEmailOrMobile(request.getIdentifier())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> {
+                    log.warn("User not found after OTP verification for identifier: {}", request.getIdentifier());
+                    return new RuntimeException("User not found");
+                });
 
         String email = user.getUserProfile().getEmail();
         String role = user.getUserType();
 
-        return jwtUtil.generateToken(email, role);
-    }
+        log.info("Generating JWT token for email: {}, role: {}", email, role);
 
+        String token = jwtUtil.generateToken(email, role);
+
+        log.info("JWT token generated successfully for identifier: {}", request.getIdentifier());
+
+        return token;
+    }
 
 }
