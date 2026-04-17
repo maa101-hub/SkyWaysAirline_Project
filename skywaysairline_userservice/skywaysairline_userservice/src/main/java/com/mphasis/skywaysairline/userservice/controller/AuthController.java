@@ -1,6 +1,7 @@
 package com.mphasis.skywaysairline.userservice.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,8 +10,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.mphasis.skywaysairline.userservice.dto.LoginRequest;
+import com.mphasis.skywaysairline.userservice.dto.OtpGenerateRequest;
+import com.mphasis.skywaysairline.userservice.dto.OtpVerifyRequest;
 import com.mphasis.skywaysairline.userservice.dto.RegisterRequest;
 import com.mphasis.skywaysairline.userservice.dto.UserResponse;
+import com.mphasis.skywaysairline.userservice.model.UserCredentials;
 import com.mphasis.skywaysairline.userservice.security.JwtUtil;
 import com.mphasis.skywaysairline.userservice.service.UserService;
 
@@ -186,4 +190,21 @@ public class AuthController {
                     .body("User not found: " + e.getMessage());
         }
     }
+    @PostMapping("/login/request-otp")
+    public ResponseEntity<?> requestOtp(@RequestBody OtpGenerateRequest request) {
+        String response = userService.generateLoginOtp(request.getIdentifier());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/login/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody OtpVerifyRequest request) {
+        String token = userService.verifyLoginOtp(request);
+        return ResponseEntity.ok(Map.of(
+                "token", token,
+                "message", "Login successful"
+        ));
+    }
+
+
+
 }

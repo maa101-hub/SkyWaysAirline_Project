@@ -1,5 +1,6 @@
 package com.mphasis.skywaysairline.userservice.service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -9,14 +10,17 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.mphasis.skywaysairline.userservice.dto.LoginRequest;
+import com.mphasis.skywaysairline.userservice.dto.OtpVerifyRequest;
 import com.mphasis.skywaysairline.userservice.dto.RegisterRequest;
 import com.mphasis.skywaysairline.userservice.dto.UserResponse;
 import com.mphasis.skywaysairline.userservice.exception.BadRequestException;
 import com.mphasis.skywaysairline.userservice.exception.InvalidPasswordException;
 import com.mphasis.skywaysairline.userservice.exception.UserAlreadyExistsException;
 import com.mphasis.skywaysairline.userservice.exception.UserNotFoundException;
+import com.mphasis.skywaysairline.userservice.model.OtpDetails;
 import com.mphasis.skywaysairline.userservice.model.UserCredentials;
 import com.mphasis.skywaysairline.userservice.model.UserProfile;
+import com.mphasis.skywaysairline.userservice.repo.OtpRepository;
 import com.mphasis.skywaysairline.userservice.repo.UserCredentialsRepository;
 import com.mphasis.skywaysairline.userservice.repo.UserProfileRepository;
 import com.mphasis.skywaysairline.userservice.security.JwtUtil;
@@ -37,6 +41,9 @@ public class UserService {
 
     @Autowired
     private UserCredentialsRepository credentialsRepo;
+    
+    @Autowired
+    private OtpRepository otpRepository;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -343,4 +350,54 @@ public class UserService {
 
         return user.getUserId();
     }
+    //otp
+    public String generateLoginOtp(String identifier) {
+        UserCredentials user = credentialsRepo.findByEmailOrMobile(identifier)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String otp = String.valueOf((int) (100000 + Math.random() * 900000));
+
+        OtpDetails otpDetails = new OtpDetails();
+        otpDetails.setIdentifier(identifier);
+        otpDetails.setOtp(otp);
+        otpDetails.setPurpose("LOGIN");
+        otpDetails.setExpiryTime(LocalDateTime.now().plusMinutes(5));
+        otpDetails.setUsed(false);
+
+        otpRepository.save(otpDetails);
+
+        System.out.println("Generated OTP: " + otp);
+
+        return "OTP sent successfully";
+    }
+
+    public String verifyLoginOtp(OtpVerifyRequest request) {
+        OtpDetails otpDetails = otpRepository
+                .findTopByIdentifierAndPurposeAndUsedFalseOrderByIdDesc(
+                        request.getIdentifier(),
+                        "LOGIN"
+                )
+                .orElseThrow(() -> new RuntimeException("OTP not found"));
+
+        if (otpDetails.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("OTP expired");
+        }
+
+        if (!otpDetails.getOtp().equals(request.getOtp())) {
+            throw new RuntimeException("Invalid OTP");
+        }
+
+        otpDetails.setUsed(true);
+        otpRepository.save(otpDetails);
+
+        UserCredentials user = credentialsRepo.findByEmailOrMobile(request.getIdentifier())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String email = user.getUserProfile().getEmail();
+        String role = user.getUserType();
+
+        return jwtUtil.generateToken(email, role);
+    }
+
+
 }
