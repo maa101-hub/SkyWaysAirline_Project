@@ -259,4 +259,8 @@ public class BookingService {
 
         return result;
     }
+    //RK
+    public List<Reservation> getAllBookings() {
+        return reservationRepo.findAll();
+    }
 }

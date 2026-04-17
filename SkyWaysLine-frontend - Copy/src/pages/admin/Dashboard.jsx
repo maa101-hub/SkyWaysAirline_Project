@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import "./Dashboard.css";
 import { useNavigate } from "react-router-dom";
 // import API from "../../api";
 //RK
 //import { getUsers } from "../../api.jsx";
-import { API, flightAPI, getUsers,deleteUser } from "../../api";
+import { flightAPI, getUsers, deleteUser, getAllBookings } from "../../api";
 import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
@@ -18,13 +18,53 @@ const blankRoute    = { routeId:"", source:"", destination:"", distance:"", fare
 const blankSchedule = { scheduleId:"", flightId:"", routeId:"", travelDuration:"", availableDays:"", departureTime:"" };
 const DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
+const getInitials = (...parts) =>
+  parts
+    .filter(Boolean)
+    .flatMap((part) => String(part).trim().split(/\s+/))
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("")
+    .slice(0, 2);
+
+const formatDobForUserId = (dobValue) => {
+  if (!dobValue) return "";
+
+  const raw = String(dobValue).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const [year, month, day] = raw.split("-");
+    return `${year}${day}${month}`;
+  }
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+    const [day, month, year] = raw.split("/");
+    return `${year}${day}${month}`;
+  }
+
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  const year = parsed.getFullYear();
+  const day = String(parsed.getDate()).padStart(2, "0");
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  return `${year}${day}${month}`;
+};
+
+const getDisplayUserId = (user) => {
+  if (!user) return "—";
+
+  const initials = getInitials(user.firstName, user.lastName, user.name);
+  const dobPart = formatDobForUserId(user.dob || user.dateOfBirth || user.birthDate);
+
+  return initials && dobPart ? `${initials}${dobPart}` : user.userId || "—";
+};
+
 // ── Mock data for new features (replace with API calls) ────────
 
 const MOCK_DELETE_REQUESTS = [
   { reqId:"REQ-001", userId:"USR-003", name:"Amit Kumar",  email:"amit@email.com",  requestedAt:"2024-06-10 09:30", reason:"No longer needed" },
   { reqId:"REQ-002", userId:"USR-005", name:"Vikram Joshi", email:"vikram@email.com", requestedAt:"2024-06-11 14:15", reason:"Privacy concerns" },
 ];
-const MOCK_BOOKINGS_TOTAL  = 1284;
 const MOCK_WALLET_BALANCE  = 5842390;
 const MOCK_REVENUE_MONTHLY = [420000, 510000, 380000, 620000, 590000, 710000];
 
@@ -55,6 +95,7 @@ export default function Dashboard() {
 
   // ── NEW state ─────────────────────────────────────────────
   const [users, setUsers]                   = useState([]);
+  const [bookings, setBookings]             = useState([]);
   const [deleteRequests, setDeleteRequests] = useState(MOCK_DELETE_REQUESTS);
   const [notifOpen, setNotifOpen]           = useState(false);
   const [userDelConfirm, setUserDelConfirm] = useState(null); // { userId, name, fromRequest }
@@ -62,6 +103,24 @@ export default function Dashboard() {
   const notifRef = useRef(null);
   const {profile}=useContext(AuthContext);
  const wallet = profile?.wallet ?? 0;
+
+  const fetchBookings = useCallback(async () => {
+    try {
+      const res = await getAllBookings();
+      const payload = res?.data?.data ?? res?.data;
+      const normalized = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.bookings)
+          ? payload.bookings
+          : [];
+
+      setBookings(normalized);
+    } catch (err) {
+      console.error("Error fetching bookings:", err);
+      setBookings([]);
+    }
+  }, []);
+
   // ── Existing API calls (unchanged) ───────────────────────
   useEffect(() => {
     flightAPI.get("/api/flights")
@@ -80,6 +139,25 @@ export default function Dashboard() {
       .then(res => setSchedules(res.data.data))
       .catch(err => console.error(err));
   }, []);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  useEffect(() => {
+    if (tab !== "bookings" && tab !== "overview") return;
+
+    fetchBookings();
+  }, [tab, fetchBookings]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchBookings();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [fetchBookings]);
 
   //RK
   useEffect(() => {
@@ -204,8 +282,77 @@ const fetchUsers = async () => {
   };
 
   // ── Overview computed values ──────────────────────────────
-  const totalSeats    = flights.reduce((a, f) => a + Number(f.seatingCapacity || 0), 0);
-  const months        = ["Jan","Feb","Mar","Apr","May","Jun"];
+  const totalSeats = flights.reduce((a, f) => a + Number(f.seatingCapacity || 0), 0);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun"];
+
+  const bookingRows = flights.map((flight) => {
+    const totalFlightSeats = Number(flight.seatingCapacity || 0);
+    const relatedSchedules = schedules.filter((schedule) => schedule.flightId === flight.flightId);
+    const relatedScheduleIds = relatedSchedules.map((schedule) => schedule.scheduleId);
+    const routeIds = [...new Set(relatedSchedules.map((schedule) => schedule.routeId).filter(Boolean))];
+    const matchingRoutes = routeIds
+      .map((routeId) => routes.find((route) => route.routeId === routeId))
+      .filter(Boolean);
+    const flightBookings = bookings.filter((booking) => {
+      const bookingFlightId = booking.flightId || booking.flightNumber || booking.flightNo;
+      const bookingScheduleId = booking.scheduleId || booking.scheduleNo;
+
+      return (
+        bookingFlightId === flight.flightId ||
+        bookingScheduleId === flight.flightId ||
+        relatedScheduleIds.includes(bookingScheduleId)
+      );
+    });
+    const bookedSeatsFromBookings = flightBookings.reduce((sum, booking) => {
+      const seatCount =
+        Number(booking.noOfSeats) ||
+        Number(booking.totalSeats) ||
+        Number(booking.bookedSeats) ||
+        (Array.isArray(booking.passengers) ? booking.passengers.length : 0) ||
+        1;
+
+      return sum + seatCount;
+    }, 0);
+    const bookedSeats = bookedSeatsFromBookings;
+    const remainingSeats = Math.max(totalFlightSeats - bookedSeats, 0);
+    const occupancy = totalFlightSeats ? Math.min((bookedSeats / totalFlightSeats) * 100, 100) : 0;
+    const routeDetails = matchingRoutes.length
+      ? matchingRoutes.map((route) => {
+          const routeOrders = bookings.filter((booking) => {
+            const bookingScheduleId = booking.scheduleId || booking.scheduleNo;
+            if (!bookingScheduleId) return false;
+
+            const matchedSchedule = schedules.find((schedule) => schedule.scheduleId === bookingScheduleId);
+            return matchedSchedule?.routeId === route.routeId;
+          }).length;
+
+          return {
+            routeId: route.routeId,
+            label: `${route.source} → ${route.destination}`,
+            orderCount: routeOrders,
+          };
+        })
+      : [{ routeId: "unassigned", label: "Route not assigned", orderCount: 0 }];
+
+    return {
+      ...flight,
+      bookedSeats,
+      remainingSeats,
+      occupancy,
+      scheduleCount: relatedSchedules.length,
+      bookingCount: flightBookings.length,
+      routeDetails,
+    };
+  });
+
+  const totalBookedSeats = bookingRows.reduce((sum, flight) => sum + flight.bookedSeats, 0);
+  const totalRemainingSeats = Math.max(totalSeats - totalBookedSeats, 0);
+
+  const fullyBookedFlights = bookingRows.filter((flight) => flight.remainingSeats === 0 && flight.seatingCapacity).length;
+  const topBookedFlight = bookingRows.reduce(
+    (best, flight) => (flight.bookedSeats > best.bookedSeats ? flight : best),
+    bookingRows[0] || { flightName: "—", flightId: "—", bookedSeats: 0 }
+  );
 
   return (
     <div className="dash-bg">
@@ -232,6 +379,9 @@ const fetchUsers = async () => {
           </button>
           <button className={`s-link ${tab==="schedules"?"active":""}`} onClick={()=>setTab("schedules")}>
             <span className="s-icon">📅</span> Schedules
+          </button>
+          <button className={`s-link ${tab==="bookings"?"active":""}`}  onClick={()=>setTab("bookings")}>
+            <span className="s-icon">🎟️</span> Bookings
           </button>
           {/* NEW */}
           <button className={`s-link ${tab==="users"?"active":""}`}     onClick={()=>setTab("users")}>
@@ -272,6 +422,12 @@ const fetchUsers = async () => {
 
             {deleteRequests.map((req) => (
               <div key={req.reqId} className="notif-item">
+                {(() => {
+                  const linkedUser = users.find((user) => user.userId === req.userId);
+                  const displayUserId = linkedUser ? getDisplayUserId(linkedUser) : req.userId;
+
+                  return (
+                    <>
                 <div className="notif-avatar">
                   {req.name.charAt(0)}
                 </div>
@@ -279,7 +435,7 @@ const fetchUsers = async () => {
                   <p className="notif-msg">
                     <strong>{req.name}</strong> wants to delete their account
                   </p>
-                  <p className="notif-meta">{req.userId} · {req.requestedAt}</p>
+                  <p className="notif-meta">{displayUserId} · {req.requestedAt}</p>
                   {req.reason && <p className="notif-reason">"{req.reason}"</p>}
                   <div className="notif-actions">
                     <button
@@ -296,6 +452,9 @@ const fetchUsers = async () => {
                     </button>
                   </div>
                 </div>
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -335,8 +494,8 @@ const fetchUsers = async () => {
                 <div className="ov-card-icon">🎫</div>
                 <div>
                   <p className="ov-label">Total Bookings</p>
-                  <p className="ov-value">{MOCK_BOOKINGS_TOTAL.toLocaleString()}</p>
-                  <p className="ov-sub">All time reservations</p>
+                  <p className="ov-value">{totalBookedSeats.toLocaleString()}</p>
+                  <p className="ov-sub">{totalRemainingSeats.toLocaleString()} seats still available</p>
                 </div>
               </div>
 
@@ -524,6 +683,115 @@ const fetchUsers = async () => {
           </div>
         )}
 
+        {/* ─── BOOKINGS TAB ─────────────────────────── */}        
+        {tab === "bookings" && (
+          <div className="tab-content">
+            <div className="tab-header">
+              <div>
+                <h1 className="tab-title">Bookings</h1>
+                <p className="tab-sub">Flight-wise booking status and remaining seat capacity</p>
+              </div>
+            </div>
+
+            <div className="stats-row">
+              <div className="stat-card">
+                <p className="stat-num">{totalBookedSeats.toLocaleString()}</p>
+                <p className="stat-label">Booked Seats</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-num">{totalRemainingSeats.toLocaleString()}</p>
+                <p className="stat-label">Remaining Seats</p>
+              </div>
+              <div className="stat-card">
+                <p className="stat-num">{fullyBookedFlights}</p>
+                <p className="stat-label">Fully Booked Flights</p>
+              </div>
+            </div>
+
+            <div className="booking-highlight-grid">
+              <div className="booking-summary-card">
+                <p className="booking-summary-label">Top booked flight</p>
+                <p className="booking-summary-title">
+                  {topBookedFlight.flightName} <span>({topBookedFlight.flightId})</span>
+                </p>
+                <p className="booking-summary-meta">
+                  {topBookedFlight.bookedSeats} bookings recorded so far
+                </p>
+              </div>
+              <div className="booking-summary-card">
+                <p className="booking-summary-label">Overall occupancy</p>
+                <p className="booking-summary-title">
+                  {totalSeats ? Math.round((totalBookedSeats / totalSeats) * 100) : 0}%
+                </p>
+                <p className="booking-summary-meta">
+                  Based on all flights currently available in the system
+                </p>
+              </div>
+            </div>
+
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Flight</th>
+                    <th>Route</th>
+                    <th>Total Seats</th>
+                    <th>Orders</th>
+                    <th>Seats Left</th>
+                    <th>Occupancy</th>
+                    <th>Schedules</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bookingRows.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="empty-row">No flight booking data available yet.</td>
+                    </tr>
+                  )}
+                  {bookingRows.map((flight) => (
+                    <tr key={flight.flightId}>
+                      <td>
+                        <div className="booking-flight-cell">
+                          <span className="booking-flight-id">{flight.flightId}</span>
+                          <span className="booking-flight-name">{flight.flightName}</span>
+                        </div>
+                      </td>
+                      <td className="booking-route-cell">
+                        <ul className="booking-route-list">
+                          {flight.routeDetails.map((route) => (
+                            <li key={`${flight.flightId}-${route.routeId}`} className="booking-route-item">
+                              <span className="booking-route-name">{route.label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>{Number(flight.seatingCapacity || 0)}</td>
+                      <td>{flight.bookingCount}</td>
+                      <td>
+                        <span className={`booking-count ${flight.remainingSeats === 0 ? "full" : "remaining"}`}>
+                          {flight.remainingSeats}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="occupancy-cell">
+                          <div className="occupancy-bar">
+                            <div
+                              className={`occupancy-fill ${flight.remainingSeats === 0 ? "danger" : ""}`}
+                              style={{ width: `${Math.min(flight.occupancy, 100)}%` }}
+                            />
+                          </div>
+                          <span>{Math.round(flight.occupancy)}%</span>
+                        </div>
+                      </td>
+                      <td>{flight.scheduleCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* ─── USERS TAB (NEW) ─────────────────────────── */}
         {tab === "users" && (
           <div className="tab-content">
@@ -559,9 +827,10 @@ const fetchUsers = async () => {
                      .filter(u => u.userType !== "A")
                      .map(u => {
                     const hasRequest = deleteRequests.some(r => r.userId === u.userId);
+                    const displayUserId = getDisplayUserId(u);
                     return (
                       <tr key={u.userId} className={hasRequest ? "row-warning" : ""}>
-                        <td><span className="id-badge">{u.userId}</span></td>
+                        <td><span className="id-badge">{displayUserId}</span></td>
                         <td>
                           <div className="user-cell">
                             <div className="user-mini-avatar">{u.firstName.charAt(0)}</div>

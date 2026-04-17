@@ -1,12 +1,13 @@
 package com.mphasis.skywaysairline.bookingservice.controller;
-
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,7 @@ import com.mphasis.skywaysairline.bookingservice.dto.BookingRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.PaymentConfirmRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.TicketResponse;
 import com.mphasis.skywaysairline.bookingservice.dto.WalletVerifyRequest;
+import com.mphasis.skywaysairline.bookingservice.models.Reservation;
 import com.mphasis.skywaysairline.bookingservice.response.ApiResponse;
 import com.mphasis.skywaysairline.bookingservice.service.BookingService;
 
@@ -116,5 +118,13 @@ public class BookingController {
                     new ApiResponse<>("Wallet top-up failed", "FAILED")
             );
         }
+    }
+    //RK
+    @GetMapping("/all")
+    public ResponseEntity<ApiResponse<List<Reservation>>> getAllBookings() {
+        List<Reservation> bookings = service.getAllBookings();
+        return ResponseEntity.ok(
+                new ApiResponse<>("Bookings fetched successfully", bookings)
+        );
     }
 }
