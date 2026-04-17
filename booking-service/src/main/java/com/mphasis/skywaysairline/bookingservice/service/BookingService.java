@@ -183,11 +183,12 @@ public class BookingService {
         paymentRepo.save(payment);
 
         log.info("Payment updated with reservationId");
+        String paymentOption="razorpay";
 
         try {
             userClient.transferMoney(
                     res.getUserId(),
-                    res.getTotalFare()
+                    res.getTotalFare(),paymentOption
             );
 
             log.info("Money transferred successfully for userId={}", res.getUserId());
@@ -259,6 +260,117 @@ public class BookingService {
 
         return result;
     }
+    
+    @Transactional
+    public TicketResponse confirmWalletBooking(BookingRequest bookingReq) {
+
+        log.info("Wallet booking started. ScheduleId: {}, UserId: {}",
+                bookingReq != null ? bookingReq.getScheduleId() : null,
+                bookingReq != null ? bookingReq.getUserId() : null);
+
+        if (bookingReq == null || bookingReq.getNoOfSeats() <= 0 ||
+                bookingReq.getPassengers() == null || bookingReq.getPassengers().isEmpty()) {
+            log.error("Invalid wallet booking request received");
+            throw new IllegalArgumentException("Invalid booking details");
+        }
+
+        FlightResponse flight = flightClient.getFlightDetails(bookingReq.getScheduleId());
+
+        if (flight == null) {
+            log.error("Flight not found for scheduleId: {}", bookingReq.getScheduleId());
+            throw new RuntimeException("Flight not found");
+        }
+
+        log.info("Flight details fetched successfully. ScheduleId: {}, Fare: {}, AvailableSeats: {}",
+                bookingReq.getScheduleId(), flight.getFare(), flight.getAvailableSeats());
+
+        if (flight.getAvailableSeats() < bookingReq.getNoOfSeats()) {
+            log.error("Insufficient seats for wallet booking. Requested: {}, Available: {}",
+                    bookingReq.getNoOfSeats(), flight.getAvailableSeats());
+            throw new FlightFullException("Not enough seats available");
+        }
+
+        log.info("Seat availability check passed for scheduleId: {}", bookingReq.getScheduleId());
+
+        double totalFare = bookingReq.getNoOfSeats() * flight.getFare();
+        log.info("Total fare calculated for wallet booking. UserId: {}, TotalFare: {}",
+                bookingReq.getUserId(), totalFare);
+
+        String paymentOption = "wallet";
+        log.info("Initiating wallet deduction. UserId: {}, Amount: {}, PaymentOption: {}",
+                bookingReq.getUserId(), totalFare, paymentOption);
+
+        userClient.transferMoney(bookingReq.getUserId(), totalFare, paymentOption);
+
+        log.info("Wallet deduction completed successfully. UserId: {}, Amount: {}",
+                bookingReq.getUserId(), totalFare);
+
+        Reservation res = new Reservation();
+        res.setReservationId(UUID.randomUUID().toString());
+        res.setUserId(bookingReq.getUserId());
+        res.setScheduleId(bookingReq.getScheduleId());
+        res.setBookingDate(LocalDate.now());
+        res.setJourneyDate(bookingReq.getJourneyDate());
+        res.setNoOfSeats(bookingReq.getNoOfSeats());
+        res.setTotalFare(totalFare);
+        res.setBookingStatus(1);
+
+        reservationRepo.save(res);
+
+        log.info("Reservation saved successfully. ReservationId: {}, UserId: {}",
+                res.getReservationId(), res.getUserId());
+
+        List<PassengerDTO> passengerList = new ArrayList<>();
+        int seatNo = 1;
+
+        for (PassengerDTO p : bookingReq.getPassengers()) {
+            Passenger passenger = new Passenger();
+            passenger.setReservationId(res.getReservationId());
+            passenger.setName(p.getName());
+            passenger.setGender(p.getGender());
+            passenger.setAge(p.getAge());
+            passenger.setSeatNo(seatNo++);
+
+            passengerRepo.save(passenger);
+            passengerList.add(p);
+
+            log.info("Passenger saved successfully. ReservationId: {}, PassengerName: {}, SeatNo: {}",
+                    res.getReservationId(), p.getName(), passenger.getSeatNo());
+        }
+
+        log.info("All passengers saved successfully. ReservationId: {}, PassengerCount: {}",
+                res.getReservationId(), passengerList.size());
+
+        flightClient.updateSeats(bookingReq.getScheduleId(), bookingReq.getNoOfSeats());
+
+        log.info("Flight seats updated successfully. ScheduleId: {}, SeatsBooked: {}",
+                bookingReq.getScheduleId(), bookingReq.getNoOfSeats());
+
+        Payment payment = new Payment();
+        payment.setOrderId("WALLET-" + UUID.randomUUID());
+        payment.setReservationId(res.getReservationId());
+        payment.setAmount(totalFare);
+        payment.setPaymentStatus("SUCCESS");
+        paymentRepo.save(payment);
+
+        log.info("Wallet payment record saved successfully. ReservationId: {}, OrderId: {}, Amount: {}",
+                res.getReservationId(), payment.getOrderId(), totalFare);
+
+        TicketResponse response = new TicketResponse();
+        response.setReservationId(res.getReservationId());
+        response.setUserId(res.getUserId());
+        response.setScheduleId(res.getScheduleId());
+        response.setJourneyDate(res.getJourneyDate());
+        response.setNoOfSeats(res.getNoOfSeats());
+        response.setTotalFare(res.getTotalFare());
+        response.setPassengers(passengerList);
+
+        log.info("Wallet booking completed successfully. ReservationId: {}, UserId: {}, TotalFare: {}",
+                res.getReservationId(), res.getUserId(), res.getTotalFare());
+
+        return response;
+    }
+
     //RK
     public List<Reservation> getAllBookings() {
         return reservationRepo.findAll();

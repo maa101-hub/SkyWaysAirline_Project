@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.mphasis.skywaysairline.bookingservice.dto.BookingRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.PaymentConfirmRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.TicketResponse;
+import com.mphasis.skywaysairline.bookingservice.dto.WalletPaymentRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.WalletVerifyRequest;
 import com.mphasis.skywaysairline.bookingservice.models.Reservation;
 import com.mphasis.skywaysairline.bookingservice.response.ApiResponse;
@@ -119,6 +120,28 @@ public class BookingController {
             );
         }
     }
+    //payment from the wallet balenece
+    @PostMapping("/wallet/payment")
+    public ResponseEntity<ApiResponse<TicketResponse>> payByWallet(
+            @Valid @RequestBody BookingRequest request) {
+
+        log.info("Wallet payment booking request received. ScheduleId: {}, UserId: {}, NoOfSeats: {}",
+                request.getScheduleId(),
+                request.getUserId(),
+                request.getNoOfSeats());
+
+        TicketResponse response = service.confirmWalletBooking(request);
+
+        log.info("Wallet booking completed successfully. ReservationId: {}, UserId: {}",
+                response.getReservationId(),
+                response.getUserId());
+
+        return ResponseEntity.ok(
+                new ApiResponse<>("Wallet payment successful", response)
+        );
+    }
+
+    
     //RK
     @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<Reservation>>> getAllBookings() {

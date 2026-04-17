@@ -804,6 +804,110 @@
   color:var(--blue);
 }
 
+.payment-methods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.payment-option {
+  width: 100%;
+  text-align: left;
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-lg);
+  background: white;
+  padding: 1rem;
+  cursor: pointer;
+  transition: transform .25s var(--ease-smooth), border-color .25s var(--ease-smooth), box-shadow .25s var(--ease-smooth), background .25s var(--ease-smooth);
+}
+
+.payment-option:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37,99,235,.3);
+  box-shadow: 0 10px 24px rgba(37,99,235,.08);
+}
+
+.payment-option.active {
+  background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+}
+
+.payment-option.insufficient {
+  border-color: rgba(239,68,68,.22);
+}
+
+.payment-option-top {
+  display: flex;
+  align-items: flex-start;
+  gap: .8rem;
+  margin-bottom: .9rem;
+}
+
+.payment-option-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--blue-soft);
+  border: 1px solid var(--border);
+  color: var(--blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.payment-option-title {
+  font-size: .96rem;
+  font-weight: 700;
+  color: var(--blue-dark);
+}
+
+.payment-option-subtitle {
+  font-size: .76rem;
+  color: var(--slate);
+  margin-top: .18rem;
+  line-height: 1.5;
+}
+
+.wallet-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: .82rem;
+  color: var(--slate-dark);
+  padding-top: .8rem;
+  margin-top: .4rem;
+  border-top: 1px solid var(--border);
+}
+
+.wallet-balance-row strong {
+  font-family: var(--font-d);
+  font-size: 1rem;
+  color: var(--blue);
+}
+
+.wallet-status {
+  margin-top: .7rem;
+  font-size: .76rem;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: .45rem .7rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+.wallet-status.enough {
+  color: var(--success);
+  background: rgba(16,185,129,.1);
+}
+
+.wallet-status.low {
+  color: var(--error);
+  background: rgba(239,68,68,.1);
+}
+
 /* ════════════════════════════════════════════════════════════════════════════
    NAVIGATION BUTTONS
    ════════════════════════════════════════════════════════════════════════════ */
@@ -1194,6 +1298,7 @@
   .nav-route { display:none; }
   .fields-grid { grid-template-columns:1fr; }
   .pax-grid { grid-template-columns:1fr 1fr; }
+  .payment-methods { grid-template-columns:1fr; }
   .confirm-grid { grid-template-columns:1fr 1fr; }
   .cg-cell:nth-child(3n) { border-right:1px solid var(--border); }
   .cg-cell:nth-child(2n) { border-right:none; }

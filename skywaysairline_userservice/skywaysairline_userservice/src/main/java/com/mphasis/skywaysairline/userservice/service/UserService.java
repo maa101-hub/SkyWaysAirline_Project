@@ -234,46 +234,80 @@ public class UserService {
     }
 
     @Transactional
-    public String transferMoney(String customerId, Double price) {
+    public String transferMoney(String customerId, Double price, String paymentOption) {
 
-        log.info("Wallet transfer started. CustomerId: {}, Amount: {}",
-                customerId, price);
+        log.info("Payment transfer started. CustomerId: {}, Amount: {}, PaymentOption: {}",
+                customerId, price, paymentOption);
 
-        UserCredentials customer = credentialsRepo.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
-
-        UserCredentials admin = credentialsRepo.findById("admin")
-                .orElseThrow(() -> new RuntimeException("Admin not found"));
-
-        Double customerWallet =
-                customer.getUserProfile().getWallet() != null
-                        ? customer.getUserProfile().getWallet()
-                        : 0.0;
-
-        Double adminWallet =
-                admin.getUserProfile().getWallet() != null
-                        ? admin.getUserProfile().getWallet()
-                        : 0.0;
-
-        if (customerWallet < price) {
-            log.warn("Insufficient balance for customerId: {}", customerId);
-            throw new RuntimeException("Insufficient balance");
+        if (customerId == null || price == null || price <= 0 || paymentOption == null || paymentOption.isBlank()) {
+            log.error("Invalid payment request. CustomerId: {}, Amount: {}, PaymentOption: {}",
+                    customerId, price, paymentOption);
+            throw new IllegalArgumentException("Invalid payment request");
         }
 
-        customer.getUserProfile().setWallet(customerWallet - price);
-        admin.getUserProfile().setWallet(adminWallet + price);
+        UserCredentials customer = credentialsRepo.findById(customerId)
+                .orElseThrow(() -> {
+                    log.error("Customer not found. CustomerId: {}", customerId);
+                    return new RuntimeException("Customer not found");
+                });
+
+        UserCredentials admin = credentialsRepo.findById("admin")
+                .orElseThrow(() -> {
+                    log.error("Admin account not found");
+                    return new RuntimeException("Admin not found");
+                });
+
+        Double customerWallet = customer.getUserProfile().getWallet() != null
+                ? customer.getUserProfile().getWallet()
+                : 0.0;
+
+        Double adminWallet = admin.getUserProfile().getWallet() != null
+                ? admin.getUserProfile().getWallet()
+                : 0.0;
+
+        if ("wallet".equalsIgnoreCase(paymentOption)) {
+            log.info("Wallet payment selected. Customer wallet will be debited and admin wallet credited.");
+
+            if (customerWallet < price) {
+                log.warn("Insufficient wallet balance. CustomerId: {}, WalletBalance: {}, Required: {}",
+                        customerId, customerWallet, price);
+                throw new RuntimeException("Insufficient balance");
+            }
+
+            customer.getUserProfile().setWallet(customerWallet - price);
+            admin.getUserProfile().setWallet(adminWallet + price);
+
+            log.info("Wallet payment applied successfully. CustomerId: {}, CustomerNewBalance: {}, AdminNewBalance: {}",
+                    customerId,
+                    customer.getUserProfile().getWallet(),
+                    admin.getUserProfile().getWallet());
+        }
+        else if ("razorpay".equalsIgnoreCase(paymentOption)) {
+            log.info("Razorpay payment selected. Only admin wallet will be credited.");
+
+            admin.getUserProfile().setWallet(adminWallet + price);
+
+            log.info("Razorpay payment applied successfully. CustomerId: {}, AdminNewBalance: {}",
+                    customerId,
+                    admin.getUserProfile().getWallet());
+        }
+        else {
+            log.error("Invalid payment option received. CustomerId: {}, PaymentOption: {}",
+                    customerId, paymentOption);
+            throw new IllegalArgumentException("Invalid payment option");
+        }
 
         credentialsRepo.save(customer);
         credentialsRepo.save(admin);
-
         profileRepo.save(customer.getUserProfile());
         profileRepo.save(admin.getUserProfile());
 
-        log.info("Wallet transfer successful. CustomerId: {}, Amount: {}",
-                customerId, price);
+        log.info("Payment transfer completed successfully. CustomerId: {}, Amount: {}, PaymentOption: {}",
+                customerId, price, paymentOption);
 
-        return "Wallet Updated Succe fully";
+        return "Wallet updated successfully";
     }
+
 
     @Transactional
     public String addWalletMoney(String userId, Double amount) {

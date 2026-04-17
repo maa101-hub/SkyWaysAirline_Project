@@ -114,7 +114,7 @@ public class AuthController {
     @PutMapping("/wallet")
     public ResponseEntity<String> updateWallet(
             @RequestParam String customerId,
-            @RequestParam Double price) {
+            @RequestParam Double price,@RequestParam String paymentOption ) {
 
         log.info(
                 "Wallet deduction API called. CustomerId: {}, Amount: {}",
@@ -123,7 +123,7 @@ public class AuthController {
         );
 
         String response =
-                userService.transferMoney(customerId, price);
+                userService.transferMoney(customerId, price,paymentOption);
 
         return ResponseEntity.ok(response);
     }

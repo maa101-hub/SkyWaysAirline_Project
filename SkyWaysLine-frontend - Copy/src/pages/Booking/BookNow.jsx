@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useContext, useEffect, useState } from "react";
 import "./BookNow.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { initiatePayment } from "../../utils/razorpay";
+import { AuthContext } from "../../context/AuthContext";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const SEAT_LETTERS = ["A","B","C","D","E","F"];
@@ -49,6 +49,39 @@ function calcArrival(departure, durationMins) {
 }
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const getInitialWalletBalance = (flightData) => {
+  const candidates = [
+    flightData?.walletBalance,
+    flightData?.user?.walletBalance,
+    flightData?.userData?.walletBalance,
+    flightData?.currentBalance,
+    typeof window !== "undefined" ? window.localStorage.getItem("skywaysWalletBalance") : null,
+  ];
+
+  for (const value of candidates) {
+    const num = Number(value);
+    if (Number.isFinite(num) && num >= 0) return num;
+  }
+
+  return 25000;
+};
+
+const getWalletBalanceFromProfile = (profile) => {
+  const candidates = [
+    profile?.walletBalance,
+    profile?.wallet,
+    profile?.balance,
+    profile?.amount,
+  ];
+
+  for (const value of candidates) {
+    const num = Number(value);
+    if (Number.isFinite(num) && num >= 0) return num;
+  }
+
+  return null;
+};
 
 function getStepClass(msg, idx) {
   const m = msg.toLowerCase();
@@ -223,6 +256,7 @@ function FlightSummary({ flight, flightData, passengers, price, depTime, arrival
 
 // ════════════════════════════════════════════════════════════════════════════════
 export default function BookNow() {
+  const { profile } = useContext(AuthContext);
   const location   = useLocation();
   const navigate   = useNavigate();
   const flightData = location.state || {};
@@ -240,6 +274,8 @@ export default function BookNow() {
   const [payMsg,   setPayMsg]   = useState("Initiating Payment...");
   const [ticket,   setTicket]   = useState(null);
   const [payError, setPayError] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [walletBalance, setWalletBalance] = useState(() => getInitialWalletBalance(flightData));
 
   // Step within form (0–3)
   const [formStep, setFormStep] = useState(0);
@@ -253,6 +289,20 @@ export default function BookNow() {
 
   const totalFare = fareCalculation(passengers.length, price);
   const today     = new Date().toISOString().split("T")[0];
+  const walletHasFunds = walletBalance >= totalFare;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("skywaysWalletBalance", String(walletBalance));
+    }
+  }, [walletBalance]);
+
+  useEffect(() => {
+    const profileWalletBalance = getWalletBalanceFromProfile(profile);
+    if (profileWalletBalance !== null) {
+      setWalletBalance(profileWalletBalance);
+    }
+  }, [profile]);
 
   // Auto-advance intro
   useEffect(() => {
@@ -284,75 +334,128 @@ export default function BookNow() {
   const onPaxChange = (key, field, val) =>
     setPassengers(passengers.map((p) => p._key === key ? { ...p, [field]: val } : p));
 
+  const finalizeSuccess = async (ticketData) => {
+    setTicket(ticketData);
+    setPayMsg("Booking Confirmed! ✓");
+    await delay(600);
+    setPhase("success");
+    setTimeout(() => setPhase("done"), 2400);
+  };
+
+  const buildAssignedPassengers = () => {
+    const seatNumbers = generateSeatAssignments(passengers.length);
+    const assigned = passengers.map((p, i) => ({
+      ...p,
+      seatNo: p.seatNo || seatNumbers[i],
+    }));
+    setPassengers(assigned);
+    return assigned;
+  };
+
+  const buildBookingRequest = (assignedPax) => ({
+    scheduleId: flight.flightId || "SC-001",
+    noOfSeats: assignedPax.length,
+    userId: autoUserId,
+    journeyDate: reservation.journeyDate,
+    passengers: assignedPax.map(({ name, gender, age, seatNo }) => ({ name, gender, age, seatNo })),
+  });
+
+  const handleWalletPayment = async (bookingRequest, assignedPax) => {
+    if (!walletHasFunds) {
+      throw new Error("Insufficient wallet balance for this booking.");
+    }
+
+    setPayMsg("Processing wallet payment...");
+    await delay(400);
+
+    setPayMsg("Confirming your booking...");
+
+    const walletRes = await axios.post(
+      "http://localhost:8090/api/booking/wallet/payment",
+      bookingRequest
+    );
+
+    setWalletBalance((prev) => Math.max(prev - totalFare, 0));
+
+    await finalizeSuccess(
+      walletRes?.data?.data || {
+        reservationId: autoReservationId,
+        flightNumber: flight.flightId || "SW-411",
+        noOfSeats: assignedPax.length,
+        totalFare,
+        journeyDate: reservation.journeyDate,
+        passengers: bookingRequest.passengers,
+        paymentMethod: "wallet",
+      }
+    );
+  };
+
+  const handleRazorpayPayment = async (bookingRequest) => {
+    setPayMsg("Creating your order...");
+
+    const orderRes = await axios.post("http://localhost:8090/api/booking/create-order", bookingRequest);
+    const orderId = orderRes.data.data;
+
+    setPayMsg("Processing payment...");
+
+    const options = {
+      key: "rzp_test_SdKfg1SHSyvaok",
+      amount: totalFare * 100,
+      currency: "INR",
+      order_id: orderId,
+      name: "SkyWays Airlines",
+      description: "Flight Booking",
+      prefill: { name: passengers[0]?.name || "", email: "user@example.com" },
+      handler: async (response) => {
+        try {
+          setPayMsg("Verifying payment...");
+          await delay(700);
+          const confirmRes = await axios.post("http://localhost:8090/api/booking/confirm", {
+            orderId: response.razorpay_order_id,
+            paymentId: response.razorpay_payment_id,
+            signature: response.razorpay_signature,
+            bookingRequest,
+          });
+          await finalizeSuccess(confirmRes.data.data);
+        } catch {
+          setPayError("Payment verification failed. Please try again.");
+          setPhase("form");
+        } finally {
+          setSaving(false);
+        }
+      },
+      modal: {
+        ondismiss: () => {
+          setSaving(false);
+          setPhase("form");
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
+  };
+
   // Submit / payment
   const handleSubmit = async () => {
     setSaving(true);
     setPayError("");
 
     try {
-      const seatNumbers = generateSeatAssignments(passengers.length);
-      const assignedPax = passengers.map((p, i) => ({
-        ...p,
-        seatNo: p.seatNo || seatNumbers[i],
-      }));
-      setPassengers(assignedPax);
-
-      const bookingRequest = {
-        scheduleId:  flight.flightId || "SC-001",
-        noOfSeats:   assignedPax.length,
-        userId:      autoUserId,
-        journeyDate: reservation.journeyDate,
-        passengers:  assignedPax.map(({ name, gender, age, seatNo }) => ({ name, gender, age, seatNo })),
-      };
+      const assignedPax = buildAssignedPassengers();
+      const bookingRequest = buildBookingRequest(assignedPax);
 
       setPhase("paying");
-      setPayMsg("Creating your order...");
 
-      const orderRes = await axios.post("http://localhost:8090/api/booking/create-order", bookingRequest);
-      const orderId = orderRes.data.data;
+      if (paymentMethod === "wallet") {
+        await handleWalletPayment(bookingRequest, assignedPax);
+        setSaving(false);
+        return;
+      }
 
-      setPayMsg("Processing payment...");
-
-      const options = {
-        key:         "rzp_test_SdKfg1SHSyvaok",
-        amount:      totalFare * 100,
-        currency:    "INR",
-        order_id:    orderId,
-        name:        "SkyWays Airlines",
-        description: "Flight Booking",
-        prefill:     { name: passengers[0]?.name || "", email: "user@example.com" },
-        handler: async (response) => {
-          try {
-            setPayMsg("Verifying payment...");
-            await delay(700);
-            const confirmRes = await axios.post("http://localhost:8090/api/booking/confirm", {
-              orderId:   response.razorpay_order_id,
-              paymentId: response.razorpay_payment_id,
-              signature: response.razorpay_signature,
-              bookingRequest,
-            });
-            setTicket(confirmRes.data.data);
-            setPayMsg("Booking Confirmed! ✓");
-            await delay(600);
-            setPhase("success");
-            setTimeout(() => setPhase("done"), 2400);
-          } catch {
-            setPayError("Payment verification failed. Please try again.");
-            setPhase("form");
-          } finally {
-            setSaving(false);
-          }
-        },
-        modal: {
-          ondismiss: () => { setSaving(false); setPhase("form"); },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-
+      await handleRazorpayPayment(bookingRequest);
     } catch (err) {
-      setPayError(err?.response?.data?.message || "Could not create order.");
+      setPayError(err?.response?.data?.message || err?.message || "Could not complete payment.");
       setSaving(false);
       setPhase("form");
     }
@@ -363,6 +466,7 @@ export default function BookNow() {
     setSaving(false);
     setPayError("");
     setTicket(null);
+    setPaymentMethod("razorpay");
     setFormStep(0);
     setReservation({ reservationType: "", journeyDate: "" });
     setPassengers([blankPassenger()]);
@@ -727,6 +831,68 @@ export default function BookNow() {
                         </div>
                       </div>
 
+                      <div className="review-section">
+                        <div className="review-section-title">Payment Method</div>
+                        <div className="payment-methods">
+                          <button
+                            type="button"
+                            className={`payment-option ${paymentMethod === "wallet" ? "active" : ""} ${!walletHasFunds ? "insufficient" : ""}`}
+                            onClick={() => setPaymentMethod("wallet")}
+                          >
+                            <div className="payment-option-top">
+                              <div className="payment-option-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <path d="M3 7a2 2 0 0 1 2-2h14v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+                                  <path d="M3 9h16"/>
+                                  <circle cx="16" cy="14" r="1.5" fill="currentColor" stroke="none"/>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="payment-option-title">Pay through Wallet</div>
+                                <div className="payment-option-subtitle">
+                                  Use your SkyWays wallet balance instantly
+                                </div>
+                              </div>
+                            </div>
+                            <div className="wallet-balance-row">
+                              <span>Current Balance</span>
+                              <strong>₹{walletBalance.toLocaleString("en-IN")}</strong>
+                            </div>
+                            <div className={`wallet-status ${walletHasFunds ? "enough" : "low"}`}>
+                              {walletHasFunds
+                                ? `After payment: ₹${Math.max(walletBalance - totalFare, 0).toLocaleString("en-IN")}`
+                                : `Need ₹${(totalFare - walletBalance).toLocaleString("en-IN")} more`}
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            className={`payment-option ${paymentMethod === "razorpay" ? "active" : ""}`}
+                            onClick={() => setPaymentMethod("razorpay")}
+                          >
+                            <div className="payment-option-top">
+                              <div className="payment-option-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                  <path d="M2 10h20"/>
+                                </svg>
+                              </div>
+                              <div>
+                                <div className="payment-option-title">Pay with Razorpay</div>
+                                <div className="payment-option-subtitle">
+                                  Card, UPI, net banking and more
+                                </div>
+                              </div>
+                            </div>
+                            <div className="wallet-balance-row">
+                              <span>Payable Amount</span>
+                              <strong>₹{totalFare.toLocaleString("en-IN")}</strong>
+                            </div>
+                            <div className="wallet-status enough">Secure online payment gateway</div>
+                          </button>
+                        </div>
+                      </div>
+
                     </div>
 
                     <div className="nav-btns spread">
@@ -739,7 +905,7 @@ export default function BookNow() {
                       <AnimBtn
                         className="btn-pay"
                         onClick={handleSubmit}
-                        disabled={saving}
+                        disabled={saving || (paymentMethod === "wallet" && !walletHasFunds)}
                       >
                         {saving ? (
                           <span className="btn-loading-inner">
@@ -750,7 +916,9 @@ export default function BookNow() {
                             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
                             </svg>
-                            Pay ₹{totalFare.toLocaleString("en-IN")}
+                            {paymentMethod === "wallet"
+                              ? `Pay from Wallet ₹${totalFare.toLocaleString("en-IN")}`
+                              : `Pay with Razorpay ₹${totalFare.toLocaleString("en-IN")}`}
                           </>
                         )}
                       </AnimBtn>

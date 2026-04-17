@@ -27,19 +27,20 @@ public class UserClient {
     )
     public String transferMoney(
             String customerId,
-            Double price) {
+            Double price,String paymentOption) {
 
         String url =
                 "http://localhost:8082/api/users/wallet"
                         + "?customerId=" + customerId
-                        + "&price=" + price;
+                        + "&price=" + price + "&paymentOption=" + paymentOption;
 
         try {
 
             log.info(
                     "Calling User Service for wallet deduction. CustomerId: {}, Amount: {}",
                     customerId,
-                    price
+                    price,
+                    paymentOption
             );
 
             ResponseEntity<String> response =
@@ -171,6 +172,7 @@ public class UserClient {
     public String transferMoneyFallback(
             String customerId,
             Double price,
+            String paymentOption,
             Exception ex) {
 
         log.error(
