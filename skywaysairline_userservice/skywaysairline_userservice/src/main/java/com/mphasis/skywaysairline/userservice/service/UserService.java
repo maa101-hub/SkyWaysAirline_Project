@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import com.mphasis.skywaysairline.userservice.dto.LoginRequest;
 import com.mphasis.skywaysairline.userservice.dto.OtpVerifyRequest;
 import com.mphasis.skywaysairline.userservice.dto.RegisterRequest;
+import com.mphasis.skywaysairline.userservice.dto.ResetPasswordRequest;
 import com.mphasis.skywaysairline.userservice.dto.UserResponse;
 import com.mphasis.skywaysairline.userservice.exception.BadRequestException;
 import com.mphasis.skywaysairline.userservice.exception.InvalidPasswordException;
@@ -432,5 +433,105 @@ public class UserService {
 
         return token;
     }
+    public String generateForgotPasswordOtp(String email) {
+
+        log.info("Generate forgot password OTP request received for email: {}", email);
+
+        UserCredentials user = credentialsRepo.findByUserProfile_Email(email)
+                .orElseThrow(() -> {
+                    log.warn("User not found for email: {}", email);
+                    return new RuntimeException("User not found");
+                });
+
+        log.info("User found for forgot password. UserId: {}", user.getUserId());
+
+        String otp = String.valueOf((int) (100000 + Math.random() * 900000));
+
+        OtpDetails otpDetails = new OtpDetails();
+        otpDetails.setIdentifier(email);
+        otpDetails.setOtp(otp);
+        otpDetails.setPurpose("FORGOT_PASSWORD");
+        otpDetails.setExpiryTime(LocalDateTime.now().plusMinutes(5));
+        otpDetails.setUsed(false);
+
+        otpRepository.save(otpDetails);
+        log.info("ForGot Password Otp is: {} ",otp);
+        log.info("Forgot password OTP saved successfully for email: {}", email);
+        log.info("Forgot password OTP expires at: {}", otpDetails.getExpiryTime());
+
+        return "OTP sent successfully";
+    }
+
+    public String verifyForgotPasswordOtp(OtpVerifyRequest request) {
+
+        log.info("Verify forgot password OTP request received for identifier: {}", request.getIdentifier());
+
+        OtpDetails otpDetails = otpRepository
+                .findTopByIdentifierAndPurposeAndUsedFalseOrderByIdDesc(
+                        request.getIdentifier(),
+                        "FORGOT_PASSWORD"
+                )
+                .orElseThrow(() -> {
+                    log.warn("Forgot password OTP not found for identifier: {}", request.getIdentifier());
+                    return new RuntimeException("OTP not found");
+                });
+
+        if (otpDetails.getExpiryTime().isBefore(LocalDateTime.now())) {
+            log.warn("Forgot password OTP expired for identifier: {}", request.getIdentifier());
+            throw new RuntimeException("OTP expired");
+        }
+
+        if (!otpDetails.getOtp().equals(request.getOtp())) {
+            log.warn("Invalid forgot password OTP entered for identifier: {}", request.getIdentifier());
+            throw new RuntimeException("Invalid OTP");
+        }
+
+        log.info("Forgot password OTP verified successfully for identifier: {}", request.getIdentifier());
+
+        return "OTP verified successfully";
+    }
+
+    @Transactional
+    public String updatePasswordAfterOtpVerification(ResetPasswordRequest request) {
+
+        log.info("Update password after OTP verification request received for email: {}", request.getEmail());
+
+        OtpDetails otpDetails = otpRepository
+                .findTopByIdentifierAndPurposeAndUsedFalseOrderByIdDesc(
+                        request.getEmail(),
+                        "FORGOT_PASSWORD"
+                )
+                .orElseThrow(() -> {
+                    log.warn("Forgot password OTP not found for email: {}", request.getEmail());
+                    return new RuntimeException("OTP not found");
+                });
+
+        if (otpDetails.getExpiryTime().isBefore(LocalDateTime.now())) {
+            log.warn("Forgot password OTP expired for email: {}", request.getEmail());
+            throw new RuntimeException("OTP expired");
+        }
+
+        if (!otpDetails.getOtp().equals(request.getOtp())) {
+            log.warn("Invalid forgot password OTP entered for email: {}", request.getEmail());
+            throw new RuntimeException("Invalid OTP");
+        }
+
+        UserCredentials user = credentialsRepo.findByUserProfile_Email(request.getEmail())
+                .orElseThrow(() -> {
+                    log.warn("User not found for email: {}", request.getEmail());
+                    return new RuntimeException("User not found");
+                });
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        credentialsRepo.save(user);
+
+        otpDetails.setUsed(true);
+        otpRepository.save(otpDetails);
+
+        log.info("Password updated successfully for email: {}", request.getEmail());
+
+        return "Password updated successfully";
+    }
+
 
 }

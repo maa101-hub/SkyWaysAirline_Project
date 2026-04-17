@@ -9,10 +9,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.mphasis.skywaysairline.userservice.dto.ForgotPasswordRequest;
 import com.mphasis.skywaysairline.userservice.dto.LoginRequest;
 import com.mphasis.skywaysairline.userservice.dto.OtpGenerateRequest;
 import com.mphasis.skywaysairline.userservice.dto.OtpVerifyRequest;
 import com.mphasis.skywaysairline.userservice.dto.RegisterRequest;
+import com.mphasis.skywaysairline.userservice.dto.ResetPasswordRequest;
 import com.mphasis.skywaysairline.userservice.dto.UserResponse;
 import com.mphasis.skywaysairline.userservice.model.UserCredentials;
 import com.mphasis.skywaysairline.userservice.security.JwtUtil;
@@ -239,6 +241,81 @@ public class AuthController {
             ));
         }
     }
+    @PostMapping("/forgot-password/request-otp")
+    public ResponseEntity<?> requestForgotPasswordOtp(
+            @RequestBody ForgotPasswordRequest request) {
 
+        log.info("Received forgot password OTP request for email: {}", request.getEmail());
 
+        try {
+            String response = userService.generateForgotPasswordOtp(request.getEmail());
+
+            log.info("Forgot password OTP generated successfully for email: {}", request.getEmail());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", response
+            ));
+
+        } catch (Exception e) {
+
+            log.error("Failed to generate forgot password OTP for email: {}. Reason: {}",
+                    request.getEmail(), e.getMessage());
+
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/forgot-password/verify-otp")
+    public ResponseEntity<?> verifyForgotPasswordOtp(
+            @RequestBody OtpVerifyRequest request) {
+
+        log.info("Received forgot password OTP verification request for identifier: {}", request.getIdentifier());
+
+        try {
+            String response = userService.verifyForgotPasswordOtp(request);
+
+            log.info("Forgot password OTP verified successfully for identifier: {}", request.getIdentifier());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", response
+            ));
+
+        } catch (Exception e) {
+
+            log.error("Forgot password OTP verification failed for identifier: {}. Reason: {}",
+                    request.getIdentifier(), e.getMessage());
+
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/forgot-password/update-password")
+    public ResponseEntity<?> updateForgotPassword(
+           @Valid @RequestBody ResetPasswordRequest request) {
+
+        log.info("Received update password request for email: {}", request.getEmail());
+
+        try {
+            String response = userService.updatePasswordAfterOtpVerification(request);
+
+            log.info("Password updated successfully for email: {}", request.getEmail());
+
+            return ResponseEntity.ok(Map.of(
+                    "message", response
+            ));
+
+        } catch (Exception e) {
+
+            log.error("Password update failed for email: {}. Reason: {}",
+                    request.getEmail(), e.getMessage());
+
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", e.getMessage()
+            ));
+        }
+    }
 }

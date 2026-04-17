@@ -1,13 +1,23 @@
 import { useContext, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { toast } from "react-toastify";
 import { AuthContext } from "../../context/AuthContext";
 import { ThemeContext } from "../../context/ThemeContext";
-import axios  from "axios";
-import { toast } from "react-toastify";
 import "./Login.css";
 
+const API_BASE_URL = "http://localhost:8082/api/users";
+const FORGOT_PASSWORD_ENDPOINTS = {
+  requestOtp: `${API_BASE_URL}/forgot-password/request-otp`,
+  verifyOtp: `${API_BASE_URL}/forgot-password/verify-otp`,
+  updatePassword: `${API_BASE_URL}/forgot-password/update-password`,
+};
+
 export default function Login() {
-  const nevigate=useNavigate();
+  const nevigate = useNavigate();
+  const { login } = useContext(AuthContext);
+  const { toggleTheme, theme } = useContext(ThemeContext);
+
   const [loginMethod, setLoginMethod] = useState("password");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,8 +29,14 @@ export default function Login() {
   const [captchaSeed, setCaptchaSeed] = useState(0);
   const [otpCountdown, setOtpCountdown] = useState(30);
 
- const { login } = useContext(AuthContext);
-  const { toggleTheme, theme } = useContext(ThemeContext);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotOtpCountdown, setForgotOtpCountdown] = useState(30);
+  const [forgotOtpVerified, setForgotOtpVerified] = useState(false);
 
   const captcha = useMemo(() => {
     const first = 2 + ((captchaSeed * 3 + 5) % 8);
@@ -36,18 +52,29 @@ export default function Login() {
   const otpPlaceholder =
     loginMethod === "mobile-otp" ? "Enter mobile number" : "Enter email address";
   const isOtpMode = loginMethod !== "password";
+  const authView = isOtpMode ? "otp" : "password";
   const methodTitle =
     loginMethod === "password"
       ? "Email + Password"
       : loginMethod === "email-otp"
-      ? "Email + OTP"
-      : "Mobile + OTP";
+        ? "Email + OTP"
+        : "Mobile + OTP";
   const methodSubtitle =
     loginMethod === "password"
       ? "Use your regular email and password to access your account."
       : loginMethod === "email-otp"
-      ? "Get a one-time password on your email for quick and secure access."
-      : "Get a one-time password on your mobile number and continue securely.";
+        ? "Get a one-time password on your email for quick and secure access."
+        : "Get a one-time password on your mobile number and continue securely.";
+
+  const switchToPasswordLogin = () => {
+    setLoginMethod("password");
+    resetOtpFlow();
+  };
+
+  const switchToOtpLogin = () => {
+    setLoginMethod("email-otp");
+    resetOtpFlow();
+  };
 
   const resetOtpFlow = () => {
     setIdentifier("");
@@ -56,6 +83,17 @@ export default function Login() {
     setMathAnswer("");
     setOtpCountdown(30);
     setCaptchaSeed((prev) => prev + 1);
+  };
+
+  const resetForgotPasswordFlow = () => {
+    setShowForgotPassword(false);
+    setForgotEmail("");
+    setForgotOtp("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setForgotStep(1);
+    setForgotOtpCountdown(30);
+    setForgotOtpVerified(false);
   };
 
   useEffect(() => {
@@ -68,431 +106,613 @@ export default function Login() {
     return () => clearTimeout(timer);
   }, [otpSent, otpCountdown]);
 
-const handlePasswordLogin = async (e) => {
-  e.preventDefault();
+  useEffect(() => {
+    if (forgotStep !== 2 || forgotOtpCountdown <= 0) return undefined;
 
-  if (!email.trim() || !password.trim()) {
-    toast.error("Please fill in all fields!");
-    return;
-  }
+    const timer = setTimeout(() => {
+      setForgotOtpCountdown((prev) => prev - 1);
+    }, 1000);
 
-  try {
-    setLoading(true);
+    return () => clearTimeout(timer);
+  }, [forgotStep, forgotOtpCountdown]);
 
-    const res = await axios.post(
-      "http://localhost:8082/api/users/login",
-      { email: email.trim(), password }
-    );
+  const handlePasswordLogin = async (e) => {
+    e.preventDefault();
 
-    const token = res.data?.token || res.data;
-
-    await login(token);
-    toast.success("Login successful!");
-
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const role = payload.role;
-
-    if(role==='C'){
-      nevigate("/home");
-    }
-    else{
-      nevigate("/admin")
+    if (!email.trim() || !password.trim()) {
+      toast.error("Please fill in all fields!");
+      return;
     }
 
-  } catch (e) {
-    if (e.response?.status === 401) {
-      toast.error("Invalid email or password!");
-    } else if (e.response?.status === 404) {
-      toast.error("User not found!");
-    } else {
-      toast.error(e.response?.data?.message || "Login Failed!");
+    try {
+      setLoading(true);
+
+      const res = await axios.post(`${API_BASE_URL}/login`, {
+        email: email.trim(),
+        password,
+      });
+
+      const token = res.data?.token || res.data;
+
+      await login(token);
+      toast.success("Login successful!");
+
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const role = payload.role;
+
+      if (role === "C") {
+        nevigate("/home");
+      } else {
+        nevigate("/admin");
+      }
+    } catch (e) {
+      if (e.response?.status === 401) {
+        toast.error("Invalid email or password!");
+      } else if (e.response?.status === 404) {
+        toast.error("User not found!");
+      } else {
+        toast.error(e.response?.data?.message || "Login Failed!");
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const handleRequestOtp = async (e) => {
-  e.preventDefault();
+  const handleRequestOtp = async (e) => {
+    e.preventDefault();
 
-  if (!identifier.trim()) {
-    toast.error(`Please enter ${otpLabel.toLowerCase()}!`);
-    return;
-  }
-
-  if (!mathAnswer.trim()) {
-    toast.error("Please solve the human check!");
-    return;
-  }
-
-  if (Number(mathAnswer) !== captcha.answer) {
-    toast.error("Wrong answer for human check!");
-    setMathAnswer("");
-    setCaptchaSeed((prev) => prev + 1);
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    await axios.post(
-      "http://localhost:8082/api/users/login/request-otp",
-      { identifier: identifier.trim() }
-    );
-
-    setOtpSent(true);
-    setOtpCountdown(30);
-    toast.success("OTP sent successfully!");
-  } catch (e) {
-    if (e.response?.status === 404) {
-      toast.error("User not found!");
-    } else {
-      toast.error(e.response?.data?.message || "Failed to send OTP!");
+    if (!identifier.trim()) {
+      toast.error(`Please enter ${otpLabel.toLowerCase()}!`);
+      return;
     }
-  } finally {
-    setLoading(false);
-  }
-};
 
-const handleVerifyOtp = async (e) => {
-  e.preventDefault();
+    if (!mathAnswer.trim()) {
+      toast.error("Please solve the human check!");
+      return;
+    }
 
-  if (!otp.trim()) {
-    toast.error("Please enter OTP!");
-    return;
-  }
+    if (Number(mathAnswer) !== captcha.answer) {
+      toast.error("Wrong answer for human check!");
+      setMathAnswer("");
+      setCaptchaSeed((prev) => prev + 1);
+      return;
+    }
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    const res = await axios.post(
-      "http://localhost:8082/api/users/login/verify-otp",
-      {
+      await axios.post(`${API_BASE_URL}/login/request-otp`, {
+        identifier: identifier.trim(),
+      });
+
+      setOtpSent(true);
+      setOtpCountdown(30);
+      toast.success("OTP sent successfully!");
+    } catch (e) {
+      if (e.response?.status === 404) {
+        toast.error("User not found!");
+      } else {
+        toast.error(e.response?.data?.message || "Failed to send OTP!");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+
+    if (!otp.trim()) {
+      toast.error("Please enter OTP!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await axios.post(`${API_BASE_URL}/login/verify-otp`, {
         identifier: identifier.trim(),
         otp: otp.trim(),
+      });
+
+      const token = res.data?.token || res.data;
+
+      await login(token);
+      toast.success("Login successful!");
+
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      const role = payload.role;
+
+      if (role === "C") {
+        nevigate("/home");
+      } else {
+        nevigate("/admin");
       }
-    );
-
-    const token = res.data?.token || res.data;
-
-    await login(token);
-    toast.success("Login successful!");
-
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    const role = payload.role;
-
-    if(role==='C'){
-      nevigate("/home");
+    } catch (e) {
+      if (e.response?.status === 401) {
+        toast.error("Invalid OTP!");
+      } else if (e.response?.status === 404) {
+        toast.error("User not found!");
+      } else {
+        toast.error(e.response?.data?.message || "Login Failed!");
+      }
+    } finally {
+      setLoading(false);
     }
-    else{
-      nevigate("/admin")
-    }
-  } catch (e) {
-    if (e.response?.status === 401) {
-      toast.error("Invalid OTP!");
-    } else if (e.response?.status === 404) {
-      toast.error("User not found!");
-    } else {
-      toast.error(e.response?.data?.message || "Login Failed!");
-    }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-const handleResendOtp = async () => {
-  if (!identifier.trim()) return;
+  const handleResendOtp = async () => {
+    if (!identifier.trim()) return;
 
-  try {
-    setLoading(true);
-    await axios.post(
-      "http://localhost:8082/api/users/login/request-otp",
-      { identifier: identifier.trim() }
-    );
-    setOtpCountdown(30);
-    toast.success("OTP resent successfully!");
-  } catch (e) {
-    toast.error(e.response?.data?.message || "Failed to resend OTP!");
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      await axios.post(`${API_BASE_URL}/login/request-otp`, {
+        identifier: identifier.trim(),
+      });
+      setOtpCountdown(30);
+      toast.success("OTP resent successfully!");
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to resend OTP!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordRequestOtp = async (e) => {
+    e.preventDefault();
+
+    if (!forgotEmail.trim()) {
+      toast.error("Please enter your email!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await axios.post(FORGOT_PASSWORD_ENDPOINTS.requestOtp, {
+        email: forgotEmail.trim(),
+      });
+      setForgotStep(2);
+      setForgotOtp("");
+      setForgotOtpVerified(false);
+      setForgotOtpCountdown(30);
+      toast.success("Password reset OTP sent successfully!");
+    } catch (e) {
+      if (e.response?.status === 404) {
+        toast.error("User not found!");
+      } else {
+        toast.error(e.response?.data?.message || "Failed to send reset OTP!");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordVerifyOtp = async (e) => {
+    e.preventDefault();
+
+    if (!forgotOtp.trim()) {
+      toast.error("Please enter OTP!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await axios.post(FORGOT_PASSWORD_ENDPOINTS.verifyOtp, {
+        identifier: forgotEmail.trim(),
+        otp: forgotOtp.trim(),
+      });
+      setForgotStep(3);
+      setForgotOtpVerified(true);
+      toast.success("OTP verified successfully!");
+    } catch (e) {
+      if (e.response?.status === 401) {
+        toast.error("Invalid OTP!");
+      } else {
+        toast.error(e.response?.data?.message || "OTP verification failed!");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordUpdate = async (e) => {
+    e.preventDefault();
+
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      toast.error("Please fill in all password fields!");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match!");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await axios.post(FORGOT_PASSWORD_ENDPOINTS.updatePassword, {
+        email: forgotEmail.trim(),
+        otp: forgotOtp.trim(),
+        newPassword,
+      });
+      toast.success("Password updated successfully. Please log in.");
+      setEmail(forgotEmail.trim());
+      resetForgotPasswordFlow();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to update password!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPasswordResendOtp = async () => {
+    if (!forgotEmail.trim()) return;
+
+    try {
+      setLoading(true);
+      await axios.post(FORGOT_PASSWORD_ENDPOINTS.requestOtp, {
+        email: forgotEmail.trim(),
+      });
+      setForgotOtpCountdown(30);
+      toast.success("Reset OTP resent successfully!");
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to resend reset OTP!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="auth-bg">
       <div className="stars" />
 
-      {/* NAV */}
       <nav className="auth-nav">
         <div className="logo">
           ✈︎ Sky<span>Ways</span>
         </div>
         <div className="nav-right">
-          <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
-          <span className="nav-text">Don't have an account?</span>
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">
+            {theme === "light" ? "🌙" : "☀️"}
+          </button>
+          <span className="nav-text">Don&apos;t have an account?</span>
           <a href="/" className="nav-cta">Sign Up</a>
         </div>
       </nav>
 
-      {/* CARD */}
       <div className="auth-wrapper">
         <div className="card">
           <div className="card-header">
-            <div className="card-icon">🔑</div>
-            <h1 className="card-title">Welcome Back</h1>
+            <div className="card-icon">{showForgotPassword ? "🛡️" : "🔑"}</div>
+            <h1 className="card-title">{showForgotPassword ? "Reset Password" : "Welcome Back"}</h1>
             <p className="card-sub">
-              Log in with email and password, email OTP, or mobile OTP.
+              {showForgotPassword
+                ? "Request an OTP, verify it, and set a new password for your account."
+                : "Log in with email and password, email OTP, or mobile OTP."}
             </p>
           </div>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "0.6rem",
-              marginBottom: "1rem",
-            }}
-          >
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                setLoginMethod("password");
-                resetOtpFlow();
-              }}
-              style={{
-                padding: "0.75rem 0.9rem",
-                opacity: loginMethod === "password" ? 1 : 0.72,
-              }}
-            >
-              Password
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                setLoginMethod("email-otp");
-                resetOtpFlow();
-              }}
-              style={{
-                padding: "0.75rem 0.9rem",
-                opacity: loginMethod === "email-otp" ? 1 : 0.72,
-              }}
-            >
-              Email OTP
-            </button>
-            <button
-              type="button"
-              className="btn-primary"
-              onClick={() => {
-                setLoginMethod("mobile-otp");
-                resetOtpFlow();
-              }}
-              style={{
-                padding: "0.75rem 0.9rem",
-                opacity: loginMethod === "mobile-otp" ? 1 : 0.72,
-              }}
-            >
-              Mobile OTP
-            </button>
-          </div>
-
-          <div
-            style={{
-              marginBottom: "1.2rem",
-              padding: "0.95rem 1rem",
-              borderRadius: "16px",
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: "0.75rem",
-                marginBottom: "0.45rem",
-              }}
-            >
-              <strong style={{ fontSize: "0.95rem" }}>{methodTitle}</strong>
-              {isOtpMode && (
-                <span
-                  style={{
-                    fontSize: "0.72rem",
-                    padding: "0.3rem 0.55rem",
-                    borderRadius: "999px",
-                    background: otpSent ? "rgba(34,197,94,0.14)" : "rgba(59,130,246,0.14)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                  }}
-                >
-                  {otpSent ? "OTP Sent" : "Step 1 of 2"}
-                </span>
-              )}
-            </div>
-            <p style={{ margin: 0, fontSize: "0.84rem", opacity: 0.86, lineHeight: 1.55 }}>
-              {methodSubtitle}
-            </p>
-            {isOtpMode && (
-              <div style={{ marginTop: "0.8rem", display: "flex", gap: "0.5rem" }}>
-                <div
-                  style={{
-                    height: "6px",
-                    flex: 1,
-                    borderRadius: "999px",
-                    background: "rgba(255,255,255,0.08)",
-                    overflow: "hidden",
-                  }}
-                >
+          {showForgotPassword ? (
+            <>
+              <div className="flow-panel">
+                <div className="flow-head">
+                  <strong>Forgot Password</strong>
+                  <span className="flow-badge">Step {forgotStep} of 3</span>
+                </div>
+                <p className="flow-copy">
+                  {forgotStep === 1 && "Enter your registered email address to receive a password reset OTP."}
+                  {forgotStep === 2 && "Verify the OTP sent to your email to unlock password reset."}
+                  {forgotStep === 3 && "Create a new password for your account and return to login."}
+                </p>
+                <div className="flow-progress">
                   <div
-                    style={{
-                      width: otpSent ? "100%" : "50%",
-                      height: "100%",
-                      background: "linear-gradient(90deg, #38bdf8, #2563eb)",
-                      transition: "width .3s ease",
-                    }}
+                    className="flow-progress-bar"
+                    style={{ width: forgotStep === 1 ? "33.33%" : forgotStep === 2 ? "66.66%" : "100%" }}
                   />
                 </div>
               </div>
-            )}
-          </div>
 
-          {loginMethod === "password" ? (
-            <form onSubmit={handlePasswordLogin} noValidate>
-              <div className="field">
-                <label htmlFor="li-email">Email</label>
-                <input
-                  id="li-email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              </div>
+              {forgotStep === 1 && (
+                <form onSubmit={handleForgotPasswordRequestOtp} noValidate>
+                  <div className="field">
+                    <label htmlFor="fp-email">Email</label>
+                    <input
+                      id="fp-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                    />
+                  </div>
 
-              <div className="field">
-                <label htmlFor="li-password">Password</label>
-                <input
-                  id="li-password"
-                  type="password"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-
-              <button type="submit" className="btn-primary">
-                {loading ? "Please wait..." : "Log In"}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={otpSent ? handleVerifyOtp : handleRequestOtp} noValidate>
-              <div className="field">
-                <label htmlFor="li-identifier">{otpLabel}</label>
-                <input
-                  id="li-identifier"
-                  type={loginMethod === "mobile-otp" ? "tel" : "text"}
-                  placeholder={otpPlaceholder}
-                  value={identifier}
-                  onChange={(e) => setIdentifier(e.target.value)}
-                  disabled={otpSent}
-                />
-              </div>
-
-              {!otpSent && (
-                <div className="field">
-                  <label htmlFor="li-math">Human Check</label>
-                  <input
-                    id="li-math"
-                    type="number"
-                    placeholder={`What is ${captcha.first} + ${captcha.second}?`}
-                    value={mathAnswer}
-                    onChange={(e) => setMathAnswer(e.target.value)}
-                  />
-                  <p className="forgot" style={{ marginTop: "0.65rem" }}>
-                    Solve the math question to continue.
-                  </p>
-                </div>
+                  <button type="submit" className="btn-primary">
+                    {loading ? "Please wait..." : "Request OTP"}
+                  </button>
+                </form>
               )}
 
-              {otpSent && (
-                <>
-                  <div
-                    style={{
-                      marginBottom: "1rem",
-                      padding: "0.85rem 0.95rem",
-                      borderRadius: "14px",
-                      background: "rgba(37,99,235,0.08)",
-                      border: "1px solid rgba(37,99,235,0.16)",
-                    }}
-                  >
-                    <div style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: "0.25rem" }}>
-                      OTP sent to {identifier}
-                    </div>
-                    <div style={{ fontSize: "0.77rem", opacity: 0.82, lineHeight: 1.5 }}>
-                      Enter the 6-digit code to continue. You can request a new OTP if needed.
+              {forgotStep === 2 && (
+                <form onSubmit={handleForgotPasswordVerifyOtp} noValidate>
+                  <div className="notice-box">
+                    <div className="notice-title">OTP sent to {forgotEmail}</div>
+                    <div className="notice-text">
+                      Enter the OTP to verify your identity before changing the password.
                     </div>
                   </div>
 
                   <div className="field">
-                    <label htmlFor="li-otp">OTP</label>
+                    <label htmlFor="fp-otp">OTP</label>
                     <input
-                      id="li-otp"
+                      id="fp-otp"
                       type="text"
                       placeholder="Enter 6-digit OTP"
-                      value={otp}
+                      value={forgotOtp}
                       maxLength={6}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                      onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ""))}
                     />
                   </div>
 
                   <p className="forgot">
                     <button
                       type="button"
-                      onClick={handleResendOtp}
-                      disabled={loading || otpCountdown > 0}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "inherit",
-                        textDecoration: "underline",
-                        cursor: loading || otpCountdown > 0 ? "not-allowed" : "pointer",
-                        opacity: loading || otpCountdown > 0 ? 0.6 : 1,
-                        padding: 0,
-                        font: "inherit",
-                      }}
+                      onClick={handleForgotPasswordResendOtp}
+                      disabled={loading || forgotOtpCountdown > 0}
+                      className="link-button"
                     >
                       {loading
                         ? "Please wait..."
-                        : otpCountdown > 0
-                        ? `Resend OTP in ${otpCountdown}s`
-                        : "Resend OTP"}
+                        : forgotOtpCountdown > 0
+                          ? `Resend OTP in ${forgotOtpCountdown}s`
+                          : "Resend OTP"}
                     </button>
                   </p>
-                </>
+
+                  <button type="submit" className="btn-primary">
+                    {loading ? "Please wait..." : "Verify OTP"}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={() => {
+                      setForgotStep(1);
+                      setForgotOtp("");
+                      setForgotOtpVerified(false);
+                    }}
+                  >
+                    Change Email
+                  </button>
+                </form>
               )}
 
-              <button type="submit" className="btn-primary">
-                {loading ? "Please wait..." : otpSent ? "Verify OTP" : "Send OTP"}
-              </button>
+              {forgotStep === 3 && (
+                <form onSubmit={handleForgotPasswordUpdate} noValidate>
+                  <div className="success-chip">
+                    {forgotOtpVerified ? "OTP verified successfully" : "Verification complete"}
+                  </div>
 
-              {otpSent && (
+                  <div className="field">
+                    <label htmlFor="fp-password">New Password</label>
+                    <input
+                      id="fp-password"
+                      type="password"
+                      placeholder="Enter new password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="fp-confirm-password">Confirm Password</label>
+                    <input
+                      id="fp-confirm-password"
+                      type="password"
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <button type="submit" className="btn-primary">
+                    {loading ? "Please wait..." : "Update Password"}
+                  </button>
+                </form>
+              )}
+
+              <hr className="divider" />
+              <p className="footer-note">
+                Remembered your password?{" "}
+                <button type="button" className="inline-action" onClick={resetForgotPasswordFlow}>
+                  Back to login
+                </button>
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="auth-mode-switch">
                 <button
                   type="button"
-                  className="btn-primary"
-                  onClick={resetOtpFlow}
-                  style={{ marginTop: "0.9rem", background: "transparent", color: "var(--text)", border: "1px solid rgba(255,255,255,.14)" }}
+                  className={`mode-chip ${authView === "password" ? "active" : ""}`}
+                  onClick={switchToPasswordLogin}
                 >
-                  Change {otpLabel}
+                  Password
                 </button>
-              )}
-            </form>
-          )}
+                <button
+                  type="button"
+                  className={`mode-chip ${authView === "otp" ? "active" : ""}`}
+                  onClick={switchToOtpLogin}
+                >
+                  OTP Login
+                </button>
+              </div>
 
-          <hr className="divider" />
-          <p className="footer-note">
-            Don't have an account? <a href="/">Create one →</a>
-          </p>
+              <div className="flow-panel">
+                <div className="flow-head">
+                  <strong>{methodTitle}</strong>
+                  {isOtpMode && (
+                    <span className="flow-badge">{otpSent ? "OTP Sent" : "Step 1 of 2"}</span>
+                  )}
+                </div>
+                <p className="flow-copy">{methodSubtitle}</p>
+                {isOtpMode && (
+                  <div className="flow-progress">
+                    <div
+                      className="flow-progress-bar"
+                      style={{ width: otpSent ? "100%" : "50%" }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {isOtpMode && (
+                <div className="otp-channel-switch">
+                  <button
+                    type="button"
+                    className={`channel-chip ${loginMethod === "email-otp" ? "active" : ""}`}
+                    onClick={() => {
+                      setLoginMethod("email-otp");
+                      resetOtpFlow();
+                    }}
+                  >
+                    Use Email OTP
+                  </button>
+                  <button
+                    type="button"
+                    className={`channel-chip ${loginMethod === "mobile-otp" ? "active" : ""}`}
+                    onClick={() => {
+                      setLoginMethod("mobile-otp");
+                      resetOtpFlow();
+                    }}
+                  >
+                    Use Mobile OTP
+                  </button>
+                </div>
+              )}
+
+              {loginMethod === "password" ? (
+                <form onSubmit={handlePasswordLogin} noValidate>
+                  <div className="field">
+                    <label htmlFor="li-email">Email</label>
+                    <input
+                      id="li-email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor="li-password">Password</label>
+                    <input
+                      id="li-password"
+                      type="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+
+                  <p className="forgot">
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() => {
+                        setForgotEmail(email);
+                        setShowForgotPassword(true);
+                      }}
+                    >
+                      Forgot Password?
+                    </button>
+                  </p>
+
+                  <button type="submit" className="btn-primary">
+                    {loading ? "Please wait..." : "Log In"}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={otpSent ? handleVerifyOtp : handleRequestOtp} noValidate>
+                  <div className="field">
+                    <label htmlFor="li-identifier">{otpLabel}</label>
+                    <input
+                      id="li-identifier"
+                      type={loginMethod === "mobile-otp" ? "tel" : "text"}
+                      placeholder={otpPlaceholder}
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      disabled={otpSent}
+                    />
+                  </div>
+
+                  {!otpSent && (
+                    <div className="field">
+                      <label htmlFor="li-math">Human Check</label>
+                      <input
+                        id="li-math"
+                        type="number"
+                        placeholder={`What is ${captcha.first} + ${captcha.second}?`}
+                        value={mathAnswer}
+                        onChange={(e) => setMathAnswer(e.target.value)}
+                      />
+                      <p className="forgot helper-copy">Solve the math question to continue.</p>
+                    </div>
+                  )}
+
+                  {otpSent && (
+                    <>
+                      <div className="notice-box">
+                        <div className="notice-title">OTP sent to {identifier}</div>
+                        <div className="notice-text">
+                          Enter the 6-digit code to continue. You can request a new OTP if needed.
+                        </div>
+                      </div>
+
+                      <div className="field">
+                        <label htmlFor="li-otp">OTP</label>
+                        <input
+                          id="li-otp"
+                          type="text"
+                          placeholder="Enter 6-digit OTP"
+                          value={otp}
+                          maxLength={6}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                        />
+                      </div>
+
+                      <p className="forgot">
+                        <button
+                          type="button"
+                          onClick={handleResendOtp}
+                          disabled={loading || otpCountdown > 0}
+                          className="link-button"
+                        >
+                          {loading
+                            ? "Please wait..."
+                            : otpCountdown > 0
+                              ? `Resend OTP in ${otpCountdown}s`
+                              : "Resend OTP"}
+                        </button>
+                      </p>
+                    </>
+                  )}
+
+                  <button type="submit" className="btn-primary">
+                    {loading ? "Please wait..." : otpSent ? "Verify OTP" : "Send OTP"}
+                  </button>
+
+                  {otpSent && (
+                    <button type="button" className="btn-secondary" onClick={resetOtpFlow}>
+                      Change {otpLabel}
+                    </button>
+                  )}
+                </form>
+              )}
+
+              <hr className="divider" />
+              <p className="footer-note">
+                Don&apos;t have an account? <a href="/">Create one →</a>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
