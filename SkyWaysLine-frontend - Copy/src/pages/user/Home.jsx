@@ -92,7 +92,7 @@ function getUserName(profile) {
 };
 
 // ── Flight Card ───────────────────────────────────────────────
-function FlightCard({ fl, passengers }) {
+function FlightCard({ fl, passengers, journeyDate }) {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
   const depTime = fl.departureTime?.slice(0, 5);
@@ -203,6 +203,7 @@ const seatStatus = getSeatStatus(fl.seats);
     state: {
       flight: fl,
       passengers,
+      journeyDate,
       userId: profile?.userId || profile?.id,
       reservationId: generateReservationId(),
       totalFare
@@ -641,25 +642,38 @@ const firstname = profile?.firstName || "User";
   const [showProfile, setShowProfile] = useState(false);
   const [showWallet, setShowWallet] = useState(false);
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const normalizeLocationInput = (value) =>
+    value.replace(/\s+/g, " ").replace(/^\s+/, "");
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    const nextValue =
+      name === "from" || name === "to" ? normalizeLocationInput(value) : value;
+
+    setForm({ ...form, [name]: nextValue });
+  };
   const handleSwap   = ()  => setForm({ ...form, from: form.to, to: form.from });
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!form.from || !form.to || !form.date) {
+    const trimmedFrom = form.from.trim();
+    const trimmedTo = form.to.trim();
+
+    if (!trimmedFrom || !trimmedTo || !form.date) {
       alert("Please fill in From, To and Date.");
       return;
     }
-    if (form.from.toLowerCase() === form.to.toLowerCase()) {
+    if (trimmedFrom.toLowerCase() === trimmedTo.toLowerCase()) {
       alert("From and To cannot be the same.");
       return;
     }
     try {
       setLoading(true);
       setSearched(false);
+      setForm((prev) => ({ ...prev, from: trimmedFrom, to: trimmedTo }));
       const res = await axios.get(
         "http://localhost:8089/api/flights/searchByRoute",
-        { params: { source: form.from, destination: form.to } }
+        { params: { source: trimmedFrom, destination: trimmedTo } }
       );
       setResults(res.data);
       console.log("Search results:", res.data);
@@ -703,7 +717,22 @@ const handleLogout = async () => {
 
       {/* ── NAVBAR ── */}
       <nav className="home-nav">
-        <div className="logo">✈︎ Sky<span>Ways</span></div>
+        <div
+          className="logo"
+          onClick={() => navigate("/home")}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              navigate("/home");
+            }
+          }}
+          style={{ cursor: "pointer" }}
+          title="Go to Home"
+        >
+          ✈︎ Sky<span>Ways</span>
+        </div>
         <div className="nav-links">
           <a href="#" className="nav-link active">Flights</a>
           <a href="#" className="nav-link">My Bookings</a>
@@ -831,7 +860,12 @@ const handleLogout = async () => {
 
           <div className="flights-list">
             {sorted.map((fl) => (
-              <FlightCard key={fl.flightId} fl={fl} passengers={form.passengers} />
+              <FlightCard
+                key={fl.flightId}
+                fl={fl}
+                passengers={form.passengers}
+                journeyDate={form.date}
+              />
             ))}
           </div>
         </div>

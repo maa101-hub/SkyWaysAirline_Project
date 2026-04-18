@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
 import './BoardingPass.css';
 
@@ -280,6 +280,7 @@ const Ticket2 = ({ boarding }) => (
 // ── Main Export ───────────────────────────────────────────────────────────────
 export default function BoardingPass() {
   const location = useLocation();
+  const navigate = useNavigate();
   const printRef = useRef(null);
   const state = location.state || {};
 
@@ -352,18 +353,34 @@ export default function BoardingPass() {
 
   return (
     <div className="boarding-pass-page">
-      <p className="page-label">✦ SkyWays Boarding Pass</p>
+      <button
+        type="button"
+        className="bp-home-btn"
+        onClick={() => navigate("/home")}
+        aria-label="Go to home"
+        title="Go to Home"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+          <path d="M3 10.5L12 3l9 7.5" />
+          <path d="M5 9.5V21h14V9.5" />
+        </svg>
+        Home
+      </button>
       <div className="bp-actions">
         <button className="btn-download" onClick={handleDownloadPdf}>Download PDF</button>
         <button className="btn-share" onClick={handleShare}>Share Boarding Pass</button>
       </div>
-      <div className="boarding-pass-content" ref={printRef}>
-        {boardings.map((boarding, index) => (
-          <div key={index} className="boarding-pass-item">
-            <Ticket1 boarding={boarding} />
-            <Ticket2 boarding={boarding} />
-          </div>
-        ))}
+
+      <div className="boarding-pass-print-area" ref={printRef}>
+        <p className="page-label">✦ SkyWays Boarding Pass</p>
+        <div className="boarding-pass-content">
+          {boardings.map((boarding, index) => (
+            <div key={index} className="boarding-pass-item">
+              <Ticket1 boarding={boarding} />
+              <Ticket2 boarding={boarding} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

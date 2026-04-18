@@ -247,7 +247,7 @@ export default function BookNow() {
 
   const [reservation, setReservation] = useState({
     reservationType: "",
-    journeyDate: "",
+    journeyDate: flightData.journeyDate || "",
   });
   const [passengers, setPassengers] = useState([blankPassenger()]);
 
@@ -433,7 +433,20 @@ export default function BookNow() {
 
           {/* Nav */}
           <header className="form-nav">
-            <div className="nav-logo">
+            <div
+              className="nav-logo"
+              onClick={() => navigate("/home")}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  navigate("/home");
+                }
+              }}
+              style={{ cursor: "pointer" }}
+              title="Go to Home"
+            >
               ✈︎ Sky<span>Ways</span>
             </div>
             <div className="nav-route">
@@ -828,6 +841,19 @@ export default function BookNow() {
       {/* ══ PHASE: DONE ════════════════════════════════════════════════════════ */}
       {phase === "done" && (
         <div className="done-stage">
+          <button
+            type="button"
+            className="done-home-btn"
+            onClick={() => navigate("/home")}
+            aria-label="Go to home"
+            title="Go to Home"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M3 10.5L12 3l9 7.5" />
+              <path d="M5 9.5V21h14V9.5" />
+            </svg>
+            Home
+          </button>
 
           <div className="confirm-card anim-up">
 

@@ -734,6 +734,112 @@
   animation: pulseWarn 2s ease-in-out infinite;
 }
 
+.user-booking-tray-wrap {
+  width: min(100%, 320px);
+}
+
+.user-booking-tray {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(79,163,227,0.28);
+  background: rgba(255,255,255,0.9);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-booking-tray:hover,
+.user-booking-tray.open {
+  background: rgba(255,255,255,1);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 4px rgba(79,163,227,0.1);
+}
+
+.user-booking-tray-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: rgba(79,163,227,0.1);
+  color: var(--sky);
+}
+
+.user-booking-tray-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(79,163,227,0.1);
+  color: var(--sky);
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-left: auto;
+}
+
+.user-booking-tray-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa7bc;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.user-booking-tray.open .user-booking-tray-arrow {
+  transform: rotate(180deg);
+  color: var(--sky);
+}
+
+.user-booking-dropdown {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(79,163,227,0.14), rgba(79,163,227,0.08));
+  border: 1px solid rgba(79,163,227,0.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.user-booking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(13,47,94,0.24);
+  border: 1px solid rgba(126,200,247,0.14);
+}
+
+.user-booking-flight {
+  color: #eef5ff;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.user-booking-orders {
+  color: #8fd3ff;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.user-booking-empty {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 /* ── User delete modal extras ── */
 .user-del-modal .modal-body { align-items: center; text-align: center; }
 .user-del-icon { font-size: 2.2rem; margin-bottom: 6px; }

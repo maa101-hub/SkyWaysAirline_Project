@@ -1100,6 +1100,32 @@
   gap:1.5rem;
 }
 
+.done-home-btn {
+  position: absolute;
+  top: 1.5rem;
+  left: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  padding: .7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,.92);
+  color: var(--blue-dark);
+  font-family: var(--font);
+  font-size: .84rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: transform .2s var(--ease-smooth), box-shadow .2s var(--ease-smooth), border-color .2s ease;
+}
+
+.done-home-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37,99,235,.25);
+  box-shadow: 0 10px 26px rgba(37,99,235,.14);
+}
+
 .confirm-card {
   width:min(100%,680px);
   background:white;
