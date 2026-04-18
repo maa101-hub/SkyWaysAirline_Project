@@ -99,6 +99,7 @@ export default function Dashboard() {
   const [deleteRequests, setDeleteRequests] = useState(MOCK_DELETE_REQUESTS);
   const [notifOpen, setNotifOpen]           = useState(false);
   const [userDelConfirm, setUserDelConfirm] = useState(null); // { userId, name, fromRequest }
+  const [expandedUserBookings, setExpandedUserBookings] = useState(null);
   const [reqApproveId, setReqApproveId]     = useState(null); // highlight animation
   const notifRef = useRef(null);
   const {profile}=useContext(AuthContext);
@@ -353,6 +354,37 @@ const fetchUsers = async () => {
     (best, flight) => (flight.bookedSeats > best.bookedSeats ? flight : best),
     bookingRows[0] || { flightName: "—", flightId: "—", bookedSeats: 0 }
   );
+
+  const getUserBookingDetails = (userId) => {
+    const userBookings = bookings.filter((booking) => booking.userId === userId);
+    const groupedFlights = userBookings.reduce((acc, booking) => {
+      const matchedSchedule = schedules.find(
+        (schedule) => schedule.scheduleId === (booking.scheduleId || booking.scheduleNo)
+      );
+      const matchedFlight = flights.find(
+        (flight) =>
+          flight.flightId === (booking.flightId || booking.flightNumber || booking.flightNo) ||
+          flight.flightId === matchedSchedule?.flightId
+      );
+
+      const flightKey = matchedFlight?.flightId || booking.flightId || booking.flightNumber || "UNKNOWN";
+      const flightLabel = matchedFlight
+        ? `${matchedFlight.flightId} ${matchedFlight.flightName}`
+        : `${flightKey} Flight`;
+
+      if (!acc[flightKey]) {
+        acc[flightKey] = { label: flightLabel, orders: 0 };
+      }
+
+      acc[flightKey].orders += 1;
+      return acc;
+    }, {});
+
+    return {
+      totalOrders: userBookings.length,
+      flights: Object.values(groupedFlights),
+    };
+  };
 
   return (
     <div className="dash-bg">
@@ -818,7 +850,7 @@ const fetchUsers = async () => {
                 <thead>
                   <tr>
                     <th>User ID</th><th>Name</th><th>Email</th>
-                    <th>Phone</th><th>Joined</th><th>Actions</th>
+                    <th>Phone</th><th>Booked Flights</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -828,6 +860,7 @@ const fetchUsers = async () => {
                      .map(u => {
                     const hasRequest = deleteRequests.some(r => r.userId === u.userId);
                     const displayUserId = getDisplayUserId(u);
+                    const bookingDetails = getUserBookingDetails(u.userId);
                     return (
                       <tr key={u.userId} className={hasRequest ? "row-warning" : ""}>
                         <td><span className="id-badge">{displayUserId}</span></td>
@@ -841,7 +874,48 @@ const fetchUsers = async () => {
                         <td>{u.email}</td>
                         
                         <td>{u.phoneNumber}</td>
-                        <td>{u.joinDate || "-"}</td>
+                        <td>
+                          {bookingDetails.flights.length ? (
+                            <div className="user-booking-tray-wrap">
+                              <button
+                                type="button"
+                                className={`user-booking-tray ${expandedUserBookings === u.userId ? "open" : ""}`}
+                                onClick={() =>
+                                  setExpandedUserBookings(expandedUserBookings === u.userId ? null : u.userId)
+                                }
+                                aria-label="View booked flights"
+                                title="View booked flights"
+                              >
+                                <span className="user-booking-tray-icon">
+                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M3 7.5h18" />
+                                    <path d="M6 5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+                                    <path d="M8 11h8" />
+                                    <path d="M8 15h5" />
+                                  </svg>
+                                </span>
+                                <span className="user-booking-tray-count">{bookingDetails.flights.length}</span>
+                                <span className="user-booking-tray-arrow">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M7 10l5 5 5-5z" />
+                                  </svg>
+                                </span>
+                              </button>
+                              {expandedUserBookings === u.userId && (
+                                <div className="user-booking-dropdown">
+                                  {bookingDetails.flights.map((flight) => (
+                                    <div key={`${u.userId}-${flight.label}`} className="user-booking-row">
+                                      <span className="user-booking-flight">{flight.label}</span>
+                                      <span className="user-booking-orders">× {flight.orders}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="user-booking-empty">No bookings yet</span>
+                          )}
+                        </td>
                         <td>
                           <button
                             className="btn-delete"
