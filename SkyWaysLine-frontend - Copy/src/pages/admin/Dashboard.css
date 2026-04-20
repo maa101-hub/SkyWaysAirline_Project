@@ -318,6 +318,182 @@
 }
 .btn-danger:hover { background: rgba(224,85,85,0.35); }
 
+/* ── Schedule Details Modal Styles ── */
+.modal-lg {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.route-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+
+.detail-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 1rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.modal-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 18px 0;
+}
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.schedule-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.schedule-card:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(79,163,227,0.3);
+  transform: translateY(-1px);
+}
+
+.schedule-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.schedule-id-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border: 1px solid rgba(79,163,227,0.42);
+  color: var(--sky);
+  background: rgba(79,163,227,0.12);
+}
+
+.schedule-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  font-size: 0.9rem;
+}
+
+.schedule-row .label {
+  color: var(--muted);
+  font-weight: 600;
+  min-width: 100px;
+}
+
+.schedule-row .value {
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+  flex: 1;
+}
+
+.schedule-row.compact {
+  padding: 6px 0;
+}
+
+.flight-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.flight-name {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-days-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px dashed rgba(255,255,255,0.12);
+}
+
+.schedule-days-wrap .label {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.84rem;
+}
+
+.badge-flight {
+  display: inline-block;
+  background: rgba(79,163,227,0.15);
+  color: var(--sky);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.empty-message {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.modal-close:hover {
+  background: rgba(255,255,255,0.1);
+  color: var(--text);
+}
+
 /* ═══════════════════════════════════════════════
    NEW STYLES — everything below is new
 ═══════════════════════════════════════════════ */
@@ -557,6 +733,225 @@
 .quick-val { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: var(--text); }
 .quick-val.warn { color: var(--red); }
 
+/* ── Map tab ── */
+.map-layout {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.india-map-card,
+.map-route-list-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.india-map-canvas {
+  width: 100%;
+  min-height: 460px;
+  border-radius: 16px;
+  border: 1px solid rgba(79,163,227,0.18);
+  overflow: hidden;
+}
+
+.india-real-map {
+  width: 100%;
+  height: 460px;
+  border-radius: 16px;
+}
+
+.india-real-map .leaflet-tile-pane {
+  filter: saturate(1.05) contrast(1.02);
+}
+
+.india-real-map .leaflet-popup-content-wrapper,
+.india-real-map .leaflet-popup-tip {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.india-real-map .leaflet-control-zoom a {
+  color: var(--text);
+  background: var(--card);
+  border-color: var(--border);
+}
+
+.plane-marker-wrap {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.plane-marker {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #0a0f2c;
+  text-shadow: 0 0 4px rgba(255,255,255,0.9);
+  transform-origin: center center;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+[data-theme="dark"] .plane-marker {
+  color: #e8eaf6;
+  text-shadow: 0 0 4px rgba(10,15,44,0.9);
+}
+
+.plane-marker-wrap:hover .plane-marker {
+  color: var(--red);
+  text-shadow: 0 0 6px rgba(224,85,85,0.65);
+}
+
+.plane-popup .leaflet-popup-content-wrapper,
+.plane-popup .leaflet-popup-tip {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.plane-popup .leaflet-popup-content {
+  margin: 10px 12px;
+}
+
+.plane-popup-card {
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plane-popup-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.plane-popup-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(76, 175, 125, 0.14);
+  border: 1px solid rgba(76, 175, 125, 0.28);
+  color: var(--green);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.plane-popup-subtle {
+  color: var(--muted);
+  font-size: 0.68rem;
+  text-align: right;
+}
+
+.plane-popup-title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.25;
+}
+
+.plane-popup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plane-popup-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(79,163,227,0.1);
+  border: 1px solid rgba(79,163,227,0.18);
+  color: var(--sky-l);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.plane-popup-meta-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.plane-popup-meta-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.plane-popup-meta-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+
+.plane-popup-meta-value {
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.plane-popup-meta {
+  font-size: 0.76rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.map-route-list {
+  max-height: 460px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 4px;
+}
+
+.map-route-row {
+  border: 1px solid var(--border);
+  background: rgba(79,163,227,0.06);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.map-route-title {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.map-route-meta {
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.map-empty,
+.map-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.map-note {
+  margin-top: 12px;
+}
+
 /* ── Bookings tab ── */
 .booking-highlight-grid {
   display: grid;
@@ -700,12 +1095,72 @@
 }
 
 /* ── Users tab ── */
+.users-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: -10px 0 16px;
+}
+
+.users-search {
+  flex: 1;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--ibg);
+  border: 1.5px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.02);
+}
+
+.users-search:focus-within {
+  border-color: var(--sky);
+  background: rgba(79,163,227,0.06);
+  box-shadow: 0 0 0 4px rgba(79,163,227,0.08);
+}
+
+.users-search-icon {
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  user-select: none;
+}
+
+.users-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.92rem;
+}
+
+.users-search input::placeholder {
+  color: rgba(123,132,176,0.65);
+}
+
+.users-result-meta {
+  color: var(--muted);
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
 .del-req-badge {
+  appearance: none;
   background: rgba(224,85,85,0.15);
   border: 1.5px solid rgba(224,85,85,0.35);
   color: #ff9b9b; border-radius: 10px;
   padding: 8px 16px; font-size: 0.82rem; font-weight: 600;
   cursor: pointer; transition: background 0.2s;
+  font-family: 'DM Sans', sans-serif;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   animation: pulseWarn 2s ease-in-out infinite;
 }
 .del-req-badge:hover { background: rgba(224,85,85,0.25); }
@@ -840,6 +1295,43 @@
   font-size: 0.78rem;
 }
 
+.deleted-users-section {
+  margin-top: 18px;
+}
+
+.deleted-users-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.deleted-users-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.deleted-user-row td {
+  opacity: 0.92;
+}
+
+.deleted-avatar {
+  background: linear-gradient(135deg, rgba(224,85,85,0.85), rgba(240,165,0,0.85));
+}
+
+.deleted-by-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ffb3b3;
+  background: rgba(224,85,85,0.12);
+  border: 1px solid rgba(224,85,85,0.28);
+}
+
 /* ── User delete modal extras ── */
 .user-del-modal .modal-body { align-items: center; text-align: center; }
 .user-del-icon { font-size: 2.2rem; margin-bottom: 6px; }
@@ -850,6 +1342,7 @@
   .overview-cards { grid-template-columns: 1fr 1fr; }
   .quick-row      { grid-template-columns: 1fr 1fr; }
   .booking-highlight-grid { grid-template-columns: 1fr; }
+  .map-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
   .sidebar { width: 68px; }
@@ -866,6 +1359,9 @@
 }
 @media (max-width: 600px) {
   .tab-header { flex-direction: column; gap: 14px; }
+  .users-toolbar { flex-direction: column; align-items: stretch; }
+  .users-search { max-width: none; }
+  .users-result-meta { white-space: normal; }
   .form-row-2 { grid-template-columns: 1fr; }
   .data-table { font-size: 0.78rem; }
   .data-table th, .data-table td { padding: 10px 12px; }
@@ -873,4 +1369,6 @@
   .notif-panel { width: calc(100vw - 32px); right: -16px; }
   .occupancy-cell { min-width: 120px; }
   .occupancy-bar { width: 72px; }
+  .india-map-canvas { min-height: 360px; }
+  .india-real-map { height: 360px; }
 }
