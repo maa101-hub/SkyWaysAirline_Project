@@ -1,18 +1,27 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useContext } from "react";
 import "./Dashboard.css";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 import { useNavigate } from "react-router-dom";
-// import API from "../../api";
-//RK
-//import { getUsers } from "../../api.jsx";
 import { flightAPI, getUsers, deleteUser, getAllBookings } from "../../api";
-import { useContext } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
-
 import { ThemeContext } from "../../context/ThemeContext";
+import AdminMapView from "./AdminMapView";
+import RouteScheduleModal from "./RouteScheduleModal";
+import AdminOverviewTab from "./AdminOverviewTab";
+import AdminBookingsTab from "./AdminBookingsTab";
+import AdminUsersTab from "./AdminUsersTab";
+import AdminSchedulesTab from "./AdminSchedulesTab";
+import AdminFlightsTab from "./AdminFlightsTab";
+import AdminRoutesTab from "./AdminRoutesTab";
+import AdminNotificationsPanel from "./AdminNotificationsPanel";
+import AdminFlightModal from "./AdminFlightModal";
+import AdminRouteModal from "./AdminRouteModal";
+import AdminScheduleModal from "./AdminScheduleModal";
+import AdminDeleteConfirmModal from "./AdminDeleteConfirmModal";
+import AdminUserDeleteModal from "./AdminUserDeleteModal";
 
-
-// ── Blank forms ───────────────────────────────────────────────
 const blankFlight   = { flightId:"", flightName:"", seatingCapacity:"", reservationCapacity:"" };
 const blankRoute    = { routeId:"", source:"", destination:"", distance:"", fare:"" };
 const blankSchedule = { scheduleId:"", flightId:"", routeId:"", travelDuration:"", availableDays:"", departureTime:"" };
@@ -59,21 +68,101 @@ const getDisplayUserId = (user) => {
   return initials && dobPart ? `${initials}${dobPart}` : user.userId || "—";
 };
 
-// ── Mock data for new features (replace with API calls) ────────
+const INDIA_CITY_POINTS = {
+  delhi: { label: "Delhi", lat: 28.6139, lng: 77.209 },
+  mumbai: { label: "Mumbai", lat: 19.076, lng: 72.8777 },
+  bengaluru: { label: "Bengaluru", lat: 12.9716, lng: 77.5946 },
+  chennai: { label: "Chennai", lat: 13.0827, lng: 80.2707 },
+  kolkata: { label: "Kolkata", lat: 22.5726, lng: 88.3639 },
+  hyderabad: { label: "Hyderabad", lat: 17.385, lng: 78.4867 },
+  ahmedabad: { label: "Ahmedabad", lat: 23.0225, lng: 72.5714 },
+  pune: { label: "Pune", lat: 18.5204, lng: 73.8567 },
+  goa: { label: "Goa", lat: 15.2993, lng: 74.124 },
+  jaipur: { label: "Jaipur", lat: 26.9124, lng: 75.7873 },
+  lucknow: { label: "Lucknow", lat: 26.8467, lng: 80.9462 },
+  patna: { label: "Patna", lat: 25.5941, lng: 85.1376 },
+  bhopal: { label: "Bhopal", lat: 23.2599, lng: 77.4126 },
+  nagpur: { label: "Nagpur", lat: 21.1458, lng: 79.0882 },
+  kochi: { label: "Kochi", lat: 9.9312, lng: 76.2673 },
+  trivandrum: { label: "Trivandrum", lat: 8.5241, lng: 76.9366 },
+  srinagar: { label: "Srinagar", lat: 34.0837, lng: 74.7973 },
+  guwahati: { label: "Guwahati", lat: 26.1445, lng: 91.7362 },
+  bhubaneswar: { label: "Bhubaneswar", lat: 20.2961, lng: 85.8245 },
+  visakhapatnam: { label: "Visakhapatnam", lat: 17.6868, lng: 83.2185 },
+  indore: { label: "Indore", lat: 22.7196, lng: 75.8577 },
+  chandigarh: { label: "Chandigarh", lat: 30.7333, lng: 76.7794 },
+};
+
+const INDIA_MAP_CENTER = [22.9734, 78.6569];
+const INDIA_MAP_BOUNDS = [
+  [6.0, 67.5],
+  [37.5, 97.5],
+];
+
+const CITY_ALIASES = {
+  delhi: "delhi",
+  "new delhi": "delhi",
+  mumbai: "mumbai",
+  bombay: "mumbai",
+  bengaluru: "bengaluru",
+  bangalore: "bengaluru",
+  chennai: "chennai",
+  madras: "chennai",
+  kolkata: "kolkata",
+  calcutta: "kolkata",
+  hyderabad: "hyderabad",
+  ahmedabad: "ahmedabad",
+  pune: "pune",
+  goa: "goa",
+  jaipur: "jaipur",
+  lucknow: "lucknow",
+  patna: "patna",
+  bhopal: "bhopal",
+  nagpur: "nagpur",
+  kochi: "kochi",
+  cochin: "kochi",
+  trivandrum: "trivandrum",
+  thiruvananthapuram: "trivandrum",
+  srinagar: "srinagar",
+  guwahati: "guwahati",
+  bhubaneswar: "bhubaneswar",
+  vizag: "visakhapatnam",
+  visakhapatnam: "visakhapatnam",
+  indore: "indore",
+  chandigarh: "chandigarh",
+};
+
+const normalizePlace = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const resolveCityKey = (placeName) => {
+  const normalized = normalizePlace(placeName);
+  if (!normalized) return null;
+
+  if (CITY_ALIASES[normalized]) return CITY_ALIASES[normalized];
+
+  const matchedAlias = Object.keys(CITY_ALIASES).find(
+    (alias) => normalized.includes(alias) || alias.includes(normalized)
+  );
+
+  return matchedAlias ? CITY_ALIASES[matchedAlias] : null;
+};
 
 const MOCK_DELETE_REQUESTS = [
   { reqId:"REQ-001", userId:"USR-003", name:"Amit Kumar",  email:"amit@email.com",  requestedAt:"2024-06-10 09:30", reason:"No longer needed" },
   { reqId:"REQ-002", userId:"USR-005", name:"Vikram Joshi", email:"vikram@email.com", requestedAt:"2024-06-11 14:15", reason:"Privacy concerns" },
 ];
-const MOCK_WALLET_BALANCE  = 5842390;
-const MOCK_REVENUE_MONTHLY = [420000, 510000, 380000, 620000, 590000, 710000];
+const DELETED_USERS_STORAGE_KEY = "skyways_admin_deleted_users";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
   const { toggleTheme, theme } = useContext(ThemeContext);
   const [tab, setTab] = useState("overview");
-  // ── Existing state (unchanged) ────────────────────────────
   const [flights,   setFlights]   = useState([]);
   const [routes,    setRoutes]    = useState([]);
   const [schedules, setSchedules] = useState([]);
@@ -93,17 +182,20 @@ export default function Dashboard() {
   const [scheduleModal, setScheduleModal] = useState(false);
   const [scheduleDel, setScheduleDel]     = useState(null);
 
-  // ── NEW state ─────────────────────────────────────────────
   const [users, setUsers]                   = useState([]);
+  const [deletedUsers, setDeletedUsers]     = useState([]);
   const [bookings, setBookings]             = useState([]);
   const [deleteRequests, setDeleteRequests] = useState(MOCK_DELETE_REQUESTS);
   const [notifOpen, setNotifOpen]           = useState(false);
   const [userDelConfirm, setUserDelConfirm] = useState(null); // { userId, name, fromRequest }
   const [expandedUserBookings, setExpandedUserBookings] = useState(null);
-  const [reqApproveId, setReqApproveId]     = useState(null); // highlight animation
+  const [geoCityPoints, setGeoCityPoints]   = useState({});
+  const [mapNow, setMapNow]                 = useState(Date.now());
+  const [lineDashOffset, setLineDashOffset] = useState(0);
+  const [selectedRouteOnMap, setSelectedRouteOnMap] = useState(null);
   const notifRef = useRef(null);
-  const {profile}=useContext(AuthContext);
- const wallet = profile?.wallet ?? 0;
+  const { profile } = useContext(AuthContext);
+  const wallet = profile?.wallet ?? 0;
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -122,23 +214,16 @@ export default function Dashboard() {
     }
   }, []);
 
-  // ── Existing API calls (unchanged) ───────────────────────
   useEffect(() => {
-    flightAPI.get("/api/flights")
-      .then(res => setFlights(res.data.data))
-      .catch(err => console.error(err));
+    flightAPI.get("/api/flights").then((res) => setFlights(res.data.data)).catch(console.error);
   }, []);
 
   useEffect(() => {
-    flightAPI.get("/api/routes")
-      .then(res => setRoutes(res.data.data))
-      .catch(err => console.error(err));
+    flightAPI.get("/api/routes").then((res) => setRoutes(res.data.data)).catch(console.error);
   }, []);
 
   useEffect(() => {
-    flightAPI.get("/api/schedules")
-      .then(res => setSchedules(res.data.data))
-      .catch(err => console.error(err));
+    flightAPI.get("/api/schedules").then((res) => setSchedules(res.data.data)).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -152,29 +237,64 @@ export default function Dashboard() {
   }, [tab, fetchBookings]);
 
   useEffect(() => {
-    const handleFocus = () => {
-      fetchBookings();
-    };
+    if (tab !== "map") return;
 
+    const clockTimer = setInterval(() => {
+      setMapNow(Date.now());
+    }, 1000);
+
+    const lineTimer = setInterval(() => {
+      setLineDashOffset((prev) => (prev <= -100 ? 0 : prev - 1));
+    }, 120);
+
+    return () => {
+      clearInterval(clockTimer);
+      clearInterval(lineTimer);
+    };
+  }, [tab]);
+
+  useEffect(() => {
+    const handleFocus = () => fetchBookings();
     window.addEventListener("focus", handleFocus);
     return () => window.removeEventListener("focus", handleFocus);
   }, [fetchBookings]);
 
-  //RK
   useEffect(() => {
-  fetchUsers();
-}, []);
+    (async () => {
+      try {
+        const res = await getUsers();
+        setUsers(res.data);
+      } catch (err) {
+        console.error("Error fetching users:", err);
+      }
+    })();
+  }, []);
 
-const fetchUsers = async () => {
-  try {
-    const res = await getUsers();
-    setUsers(res.data);
-  } catch (err) {
-    console.error("Error fetching users:", err);
-  }
-};
+  useEffect(() => {
+    try {
+      const savedDeletedUsers = localStorage.getItem(DELETED_USERS_STORAGE_KEY);
+      if (!savedDeletedUsers) return;
 
-  // Close notif panel on outside click
+      const parsedDeletedUsers = JSON.parse(savedDeletedUsers);
+      if (Array.isArray(parsedDeletedUsers)) {
+        setDeletedUsers(parsedDeletedUsers);
+      }
+    } catch (error) {
+      console.error("Error reading deleted users history:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        DELETED_USERS_STORAGE_KEY,
+        JSON.stringify(deletedUsers)
+      );
+    } catch (error) {
+      console.error("Error saving deleted users history:", error);
+    }
+  }, [deletedUsers]);
+
   useEffect(() => {
     const handler = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
@@ -185,7 +305,59 @@ const fetchUsers = async () => {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ── Existing helpers (unchanged) ──────────────────────────
+  useEffect(() => {
+    const unresolvedPlaces = [...new Set(routes.flatMap((route) => [route?.source, route?.destination]).map((place) => normalizePlace(place)).filter((place) => place && !resolveCityKey(place) && !geoCityPoints[place]))];
+
+    if (unresolvedPlaces.length === 0) return;
+
+    let cancelled = false;
+
+    const geocodeMissingPlaces = async () => {
+      const resolvedEntries = await Promise.all(
+        unresolvedPlaces.map(async (place) => {
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in&q=${encodeURIComponent(place)}`
+            );
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            if (!Array.isArray(data) || data.length === 0) return null;
+
+            const hit = data[0];
+            const lat = Number(hit.lat);
+            const lng = Number(hit.lon);
+            if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+
+            const label = String(hit.display_name || place).split(",")[0]?.trim() || place;
+            return [place, { label, lat, lng }];
+          } catch (error) {
+            return null;
+          }
+        })
+      );
+
+      if (cancelled) return;
+
+      const nextPoints = resolvedEntries
+        .filter(Boolean)
+        .reduce((acc, [key, value]) => {
+          acc[key] = value;
+          return acc;
+        }, {});
+
+      if (Object.keys(nextPoints).length) {
+        setGeoCityPoints((prev) => ({ ...prev, ...nextPoints }));
+      }
+    };
+
+    geocodeMissingPlaces();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [routes, geoCityPoints]);
+
   const openAdd = (type) => {
     if (type === "flights")   { setFlightForm(blankFlight);     setFlightEdit(null);   setFlightModal(true); }
     if (type === "routes")    { setRouteForm(blankRoute);       setRouteEdit(null);    setRouteModal(true); }
@@ -257,34 +429,57 @@ const fetchUsers = async () => {
     } catch (err) { console.error(err); }
   };
 
-  // ── NEW: User / Delete-request handlers ──────────────────
   const confirmDeleteUser = (userId, name, fromRequest = false) => {
     setUserDelConfirm({ userId, name, fromRequest });
   };
 
   const executeDeleteUser = async () => {
-  const { userId, fromRequest } = userDelConfirm;
-  try {
-    await deleteUser(userId); // 🔥 backend call
-    setUsers(users.filter(u => u.userId !== userId));
-    if (fromRequest) {
-      setDeleteRequests(deleteRequests.filter(r => r.userId !== userId));
-      setNotifOpen(false);
+    const { userId, fromRequest } = userDelConfirm;
+    const deletedUser = users.find((u) => u.userId === userId);
+    const deletedBookingDetails = getUserBookingDetails(userId);
+    try {
+      await deleteUser(userId);
+      setUsers((prevUsers) => prevUsers.filter((u) => u.userId !== userId));
+
+      if (deletedUser) {
+        const deletedName = [deletedUser.firstName, deletedUser.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+
+        setDeletedUsers((prevDeleted) => [
+          {
+            userId: deletedUser.userId,
+            displayUserId: getDisplayUserId(deletedUser),
+            name: deletedName || deletedUser.name || "Unknown User",
+            email: deletedUser.email || "—",
+            phoneNumber: deletedUser.phoneNumber || "—",
+            deletedBy: fromRequest ? "Delete Request" : "Admin",
+            deletedAt: new Date().toISOString(),
+            totalOrders: deletedBookingDetails.totalOrders,
+          },
+          ...prevDeleted.filter((entry) => entry.userId !== deletedUser.userId),
+        ]);
+      }
+
+      if (fromRequest) {
+        setDeleteRequests((prevRequests) =>
+          prevRequests.filter((r) => r.userId !== userId)
+        );
+        setNotifOpen(false);
+      }
+      setUserDelConfirm(null);
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting user");
     }
-    setUserDelConfirm(null);
-  } catch (err) {
-    console.error(err);
-    alert("Error deleting user");
-  }
-};
+  };
 
   const denyDeleteRequest = (reqId) => {
     setDeleteRequests(deleteRequests.filter(r => r.reqId !== reqId));
   };
 
-  // ── Overview computed values ──────────────────────────────
   const totalSeats = flights.reduce((a, f) => a + Number(f.seatingCapacity || 0), 0);
-  const months = ["Jan","Feb","Mar","Apr","May","Jun"];
 
   const bookingRows = flights.map((flight) => {
     const totalFlightSeats = Number(flight.seatingCapacity || 0);
@@ -304,7 +499,7 @@ const fetchUsers = async () => {
         relatedScheduleIds.includes(bookingScheduleId)
       );
     });
-    const bookedSeatsFromBookings = flightBookings.reduce((sum, booking) => {
+    const bookedSeats = flightBookings.reduce((sum, booking) => {
       const seatCount =
         Number(booking.noOfSeats) ||
         Number(booking.totalSeats) ||
@@ -314,7 +509,6 @@ const fetchUsers = async () => {
 
       return sum + seatCount;
     }, 0);
-    const bookedSeats = bookedSeatsFromBookings;
     const remainingSeats = Math.max(totalFlightSeats - bookedSeats, 0);
     const occupancy = totalFlightSeats ? Math.min((bookedSeats / totalFlightSeats) * 100, 100) : 0;
     const routeDetails = matchingRoutes.length
@@ -386,28 +580,141 @@ const fetchUsers = async () => {
     };
   };
 
+  const getMapPointForPlace = (placeName) => {
+    const cityKey = resolveCityKey(placeName);
+    if (cityKey && INDIA_CITY_POINTS[cityKey]) return INDIA_CITY_POINTS[cityKey];
+
+    const normalized = normalizePlace(placeName);
+    return normalized ? geoCityPoints[normalized] || null : null;
+  };
+
+  const parseDepartureMinutes = (timeText) => {
+    const value = String(timeText || "").trim();
+    const match = value.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return 0;
+
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return 0;
+
+    return Math.max(0, Math.min(23, hour)) * 60 + Math.max(0, Math.min(59, minute));
+  };
+
+  const createPlaneIcon = (bearing) =>
+    L.divIcon({
+      className: "plane-marker-wrap",
+      html: `<div class="plane-marker" style="transform: rotate(${bearing.toFixed(1)}deg);">✈</div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+
+  const routeSchedulesByRouteId = schedules.reduce((acc, schedule) => {
+    if (!schedule?.routeId) return acc;
+    if (!acc[schedule.routeId]) acc[schedule.routeId] = [];
+    acc[schedule.routeId].push(schedule);
+    return acc;
+  }, {});
+
+  const activeRouteMapData = routes.map((route) => {
+    const sourceKey = resolveCityKey(route.source);
+    const destinationKey = resolveCityKey(route.destination);
+    const sourceNormalized = normalizePlace(route.source);
+    const destinationNormalized = normalizePlace(route.destination);
+    const sourcePoint = getMapPointForPlace(route.source);
+    const destinationPoint = getMapPointForPlace(route.destination);
+    const linkedSchedules = routeSchedulesByRouteId[route.routeId] || [];
+    const linkedFlightIds = [...new Set(linkedSchedules.map((schedule) => schedule.flightId).filter(Boolean))];
+
+    return {
+      ...route,
+      sourceKey: sourceKey || sourceNormalized,
+      destinationKey: destinationKey || destinationNormalized,
+      sourcePoint,
+      destinationPoint,
+      linkedSchedules,
+      scheduleCount: linkedSchedules.length,
+      linkedFlightIds,
+    };
+  });
+
+  const mappedRouteLines = activeRouteMapData.filter(
+    (route) => route.sourcePoint && route.destinationPoint && route.sourceKey !== route.destinationKey
+  );
+
+  const unmappedRoutes = activeRouteMapData.filter(
+    (route) => !route.sourcePoint || !route.destinationPoint || route.sourceKey === route.destinationKey
+  );
+
+  const mapCityPins = (() => {
+    const cityMap = new Map();
+
+    mappedRouteLines.forEach((route) => {
+      cityMap.set(route.sourceKey, {
+        key: route.sourceKey,
+        label: route.sourcePoint.label,
+        lat: route.sourcePoint.lat,
+        lng: route.sourcePoint.lng,
+      });
+      cityMap.set(route.destinationKey, {
+        key: route.destinationKey,
+        label: route.destinationPoint.label,
+        lat: route.destinationPoint.lat,
+        lng: route.destinationPoint.lng,
+      });
+    });
+
+    return [...cityMap.values()];
+  })();
+
+  const animatedRouteLines = mappedRouteLines.map((route) => {
+    const schedule = route.linkedSchedules?.[0];
+    const travelDuration = Math.max(20, Number(schedule?.travelDuration) || 90);
+    const departureMinutes = parseDepartureMinutes(schedule?.departureTime);
+    const now = new Date(mapNow);
+    const nowMinutes = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60;
+    const elapsedInCycle = ((nowMinutes - departureMinutes) % travelDuration + travelDuration) % travelDuration;
+    const progress = elapsedInCycle / travelDuration;
+
+    const startLat = route.sourcePoint.lat;
+    const startLng = route.sourcePoint.lng;
+    const endLat = route.destinationPoint.lat;
+    const endLng = route.destinationPoint.lng;
+
+    const planeLat = startLat + (endLat - startLat) * progress;
+    const planeLng = startLng + (endLng - startLng) * progress;
+
+    const deltaLat = endLat - startLat;
+    const deltaLng = endLng - startLng;
+    const bearing = (Math.atan2(-deltaLat, deltaLng) * 180) / Math.PI;
+
+    return {
+      ...route,
+      planeLat,
+      planeLng,
+      bearing,
+    };
+  });
+
   return (
     <div className="dash-bg">
       <div className="stars" />
 
-      {/* ══════════════════════════════════════
-          SIDEBAR
-      ══════════════════════════════════════ */}
       <aside className="sidebar">
         <div className="sidebar-logo">✈︎ Sky<span>Ways</span></div>
         <p className="sidebar-role">Admin Panel</p>
 
         <nav className="sidebar-nav">
-          {/* NEW */}
           <button className={`s-link ${tab==="overview"?"active":""}`} onClick={()=>setTab("overview")}>
             <span className="s-icon">📊</span> Overview
           </button>
-          {/* existing */}
           <button className={`s-link ${tab==="flights"?"active":""}`}   onClick={()=>setTab("flights")}>
             <span className="s-icon">✈</span> Flights
           </button>
           <button className={`s-link ${tab==="routes"?"active":""}`}    onClick={()=>setTab("routes")}>
             <span className="s-icon">🗺</span> Routes
+          </button>
+          <button className={`s-link ${tab==="map"?"active":""}`}       onClick={()=>setTab("map")}>
+            <span className="s-icon">🌍</span> Map
           </button>
           <button className={`s-link ${tab==="schedules"?"active":""}`} onClick={()=>setTab("schedules")}>
             <span className="s-icon">📅</span> Schedules
@@ -415,7 +722,6 @@ const fetchUsers = async () => {
           <button className={`s-link ${tab==="bookings"?"active":""}`}  onClick={()=>setTab("bookings")}>
             <span className="s-icon">🎟️</span> Bookings
           </button>
-          {/* NEW */}
           <button className={`s-link ${tab==="users"?"active":""}`}     onClick={()=>setTab("users")}>
             <span className="s-icon">👥</span> Users
           </button>
@@ -428,9 +734,6 @@ const fetchUsers = async () => {
         </div>
       </aside>
 
-      {/* ══════════════════════════════════════
-          TOPBAR (notification bell)
-      ══════════════════════════════════════ */}
       <div className="dash-topbar" ref={notifRef}>
         <div className="topbar-right">
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
@@ -441,672 +744,157 @@ const fetchUsers = async () => {
             )}
           </button>
 
-          {/* ── Notification panel ── */}
-          <div className={`notif-panel ${notifOpen ? "notif-open" : ""}`}>
-            <div className="notif-header">
-              <p className="notif-title">🔔 Notifications</p>
-              <span className="notif-count">{deleteRequests.length} pending</span>
-            </div>
-
-            {deleteRequests.length === 0 && (
-              <p className="notif-empty">No pending requests</p>
-            )}
-
-            {deleteRequests.map((req) => (
-              <div key={req.reqId} className="notif-item">
-                {(() => {
-                  const linkedUser = users.find((user) => user.userId === req.userId);
-                  const displayUserId = linkedUser ? getDisplayUserId(linkedUser) : req.userId;
-
-                  return (
-                    <>
-                <div className="notif-avatar">
-                  {req.name.charAt(0)}
-                </div>
-                <div className="notif-info">
-                  <p className="notif-msg">
-                    <strong>{req.name}</strong> wants to delete their account
-                  </p>
-                  <p className="notif-meta">{displayUserId} · {req.requestedAt}</p>
-                  {req.reason && <p className="notif-reason">"{req.reason}"</p>}
-                  <div className="notif-actions">
-                    <button
-                      className="notif-btn-approve"
-                      onClick={() => confirmDeleteUser(req.userId, req.name, true)}
-                    >
-                      ✓ Delete Account
-                    </button>
-                    <button
-                      className="notif-btn-deny"
-                      onClick={() => denyDeleteRequest(req.reqId)}
-                    >
-                      ✕ Deny
-                    </button>
-                  </div>
-                </div>
-                    </>
-                  );
-                })()}
-              </div>
-            ))}
-          </div>
+          <AdminNotificationsPanel
+            notifOpen={notifOpen}
+            deleteRequests={deleteRequests}
+            users={users}
+            getDisplayUserId={getDisplayUserId}
+            confirmDeleteUser={confirmDeleteUser}
+            denyDeleteRequest={denyDeleteRequest}
+          />
         </div>
       </div>
 
-      {/* ══════════════════════════════════════
-          MAIN CONTENT
-      ══════════════════════════════════════ */}
       <main className="dash-main">
 
-        {/* ─── OVERVIEW TAB ──────────────────────────────── */}
         {tab === "overview" && (
-          <div className="tab-content">
-            <div className="tab-header">
-              <div>
-                <h1 className="tab-title">Overview</h1>
-                <p className="tab-sub">Your airline at a glance</p>
-              </div>
-            </div>
-
-            {/* ── Big stat cards ── */}
-            <div className="overview-cards">
-
-              {/* Wallet */}
-              <div className="ov-card wallet-card">
-                <div className="ov-card-icon">💰</div>
-                <div>
-                  <p className="ov-label">Admin Wallet</p>
-                  <p className="ov-value">₹{wallet}</p>
-                  <p className="ov-sub">Total revenue collected</p>
-                </div>
-              </div>
-
-              {/* Total Bookings */}
-              <div className="ov-card bookings-card">
-                <div className="ov-card-icon">🎫</div>
-                <div>
-                  <p className="ov-label">Total Bookings</p>
-                  <p className="ov-value">{totalBookedSeats.toLocaleString()}</p>
-                  <p className="ov-sub">{totalRemainingSeats.toLocaleString()} seats still available</p>
-                </div>
-              </div>
-
-              {/* Registered Users */}
-              <div className="ov-card users-card">
-                <div className="ov-card-icon">👥</div>
-                <div>
-                  <p className="ov-label">Registered Users</p>
-                  <p className="ov-value">{users.filter(u => u.userType !== "A").length}</p>
-                  <p className="ov-sub">Active accounts</p>
-                </div>
-              </div>
-
-              {/* Flights */}
-              <div className="ov-card flights-card">
-                <div className="ov-card-icon">✈</div>
-                <div>
-                  <p className="ov-label">Active Flights</p>
-                  <p className="ov-value">{flights.length}</p>
-                  <p className="ov-sub">{totalSeats} total seats</p>
-                </div>
-              </div>
-
-            </div>
-
-            {/* ── Revenue chart (CSS bar chart) ── */}
-            <div className="revenue-section">
-              <p className="section-head">Annual Revenue 2024 (₹)</p>
-              <div className="bar-chart">
-                {MOCK_REVENUE_MONTHLY.map((val, i) => {
-                  const max = Math.max(...MOCK_REVENUE_MONTHLY);
-                  const pct = (val / max) * 100;
-                  return (
-                    <div key={i} className="bar-col">
-                      <p className="bar-val">₹{(val/1000).toFixed(0)}K</p>
-                      <div className="bar-track">
-                        <div className="bar-fill" style={{ height: `${pct}%` }} />
-                      </div>
-                      <p className="bar-label">{months[i]}</p>
-                    </div>
-                  );
-                })}
-                <div className="bar-col total-col">
-                  <p className="bar-val total-val">₹{(MOCK_REVENUE_MONTHLY.reduce((a,b)=>a+b,0)/1000).toFixed(0)}K</p>
-                  <div className="bar-track">
-                    <div className="bar-fill total-fill" style={{ height: '100%' }} />
-                  </div>
-                  <p className="bar-label total-label">Total</p>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Quick summary ── */}
-            <div className="quick-row">
-              <div className="quick-card">
-                <p className="quick-label">Routes Available</p>
-                <p className="quick-val">{routes.length}</p>
-              </div>
-              <div className="quick-card">
-                <p className="quick-label">Schedules Running</p>
-                <p className="quick-val">{schedules.length}</p>
-              </div>
-              <div className="quick-card">
-                <p className="quick-label">Delete Requests</p>
-                <p className="quick-val warn">{deleteRequests.length}</p>
-              </div>
-              <div className="quick-card">
-                <p className="quick-label">Avg Fare</p>
-                <p className="quick-val">
-                  ₹{routes.length
-                    ? Math.round(routes.reduce((a,r) => a + Number(r.fare), 0) / routes.length).toLocaleString("en-IN")
-                    : "—"}
-                </p>
-              </div>
-            </div>
-          </div>
+          <AdminOverviewTab
+            wallet={wallet}
+            totalBookedSeats={totalBookedSeats}
+            totalRemainingSeats={totalRemainingSeats}
+            totalSeats={totalSeats}
+            flights={flights}
+            users={users}
+            routes={routes}
+            schedules={schedules}
+            deleteRequests={deleteRequests}
+          />
         )}
 
-        {/* ─── FLIGHTS TAB (unchanged) ─────────────────── */}
         {tab === "flights" && (
-          <div className="tab-content">
-            <div className="tab-header">
-              <div>
-                <h1 className="tab-title">Flights</h1>
-                <p className="tab-sub">Manage your fleet of aircraft</p>
-              </div>
-              <button className="btn-add" onClick={()=>openAdd("flights")}>+ Add Flight</button>
-            </div>
-            <div className="stats-row">
-              <div className="stat-card"><p className="stat-num">{flights.length}</p><p className="stat-label">Total Flights</p></div>
-              <div className="stat-card"><p className="stat-num">{flights.reduce((a,f)=>a+Number(f.seatingCapacity),0)}</p><p className="stat-label">Total Seats</p></div>
-              <div className="stat-card"><p className="stat-num">{flights.reduce((a,f)=>a+Number(f.reservationCapacity||0),0)}</p><p className="stat-label">Reserved Seats</p></div>
-            </div>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead><tr><th>Flight ID</th><th>Flight Name</th><th>Seating Capacity</th><th>Reservation Capacity</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {flights.length === 0 && <tr><td colSpan="5" className="empty-row">No flights added yet.</td></tr>}
-                  {flights.map(f => (
-                    <tr key={f.flightId}>
-                      <td><span className="id-badge">{f.flightId}</span></td>
-                      <td><strong>{f.flightName}</strong></td>
-                      <td>{f.seatingCapacity}</td>
-                      <td>{f.reservationCapacity || "—"}</td>
-                      <td><div className="action-btns">
-                        <button className="btn-edit"   onClick={()=>editFlight(f)}>✏ Edit</button>
-                        <button className="btn-delete" onClick={()=>setFlightDel(f.flightId)}>🗑 Delete</button>
-                      </div></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <AdminFlightsTab
+            flights={flights}
+            onAdd={() => openAdd("flights")}
+            onEdit={editFlight}
+            onDelete={setFlightDel}
+          />
         )}
 
-        {/* ─── ROUTES TAB (unchanged) ──────────────────── */}
         {tab === "routes" && (
-          <div className="tab-content">
-            <div className="tab-header">
-              <div><h1 className="tab-title">Routes</h1><p className="tab-sub">Configure source–destination routes</p></div>
-              <button className="btn-add" onClick={()=>openAdd("routes")}>+ Add Route</button>
-            </div>
-            <div className="stats-row">
-              <div className="stat-card"><p className="stat-num">{routes.length}</p><p className="stat-label">Total Routes</p></div>
-              <div className="stat-card"><p className="stat-num">{routes.reduce((a,r)=>a+Number(r.distance),0).toLocaleString()} km</p><p className="stat-label">Total Distance</p></div>
-              <div className="stat-card"><p className="stat-num">₹{routes.length ? Math.min(...routes.map(r=>r.fare)).toLocaleString("en-IN") : 0}</p><p className="stat-label">Min Fare</p></div>
-            </div>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead><tr><th>Route ID</th><th>Source</th><th>Destination</th><th>Distance (km)</th><th>Fare (₹)</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {routes.length === 0 && <tr><td colSpan="6" className="empty-row">No routes added yet.</td></tr>}
-                  {routes.map(r => (
-                    <tr key={r.routeId}>
-                      <td><span className="id-badge">{r.routeId}</span></td>
-                      <td>🛫 {r.source}</td><td>🛬 {r.destination}</td>
-                      <td>{Number(r.distance).toLocaleString()}</td>
-                      <td>₹{Number(r.fare).toLocaleString("en-IN")}</td>
-                      <td><div className="action-btns">
-                        <button className="btn-edit"   onClick={()=>editRoute(r)}>✏ Edit</button>
-                        <button className="btn-delete" onClick={()=>setRouteDel(r.routeId)}>🗑 Delete</button>
-                      </div></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <AdminRoutesTab
+            routes={routes}
+            onAdd={() => openAdd("routes")}
+            onEdit={editRoute}
+            onDelete={setRouteDel}
+          />
         )}
 
-        {/* ─── SCHEDULES TAB (unchanged) ───────────────── */}
+        {tab === "map" && (
+          <AdminMapView
+            animatedRouteLines={animatedRouteLines}
+            mappedRouteLines={mappedRouteLines}
+            unmappedRoutes={unmappedRoutes}
+            mapCityPins={mapCityPins}
+            lineDashOffset={lineDashOffset}
+            createPlaneIcon={createPlaneIcon}
+            onRouteClick={setSelectedRouteOnMap}
+          />
+        )}
+
         {tab === "schedules" && (
-          <div className="tab-content">
-            <div className="tab-header">
-              <div><h1 className="tab-title">Schedules</h1><p className="tab-sub">Assign flights to routes with timings</p></div>
-              <button className="btn-add" onClick={()=>openAdd("schedules")}>+ Add Schedule</button>
-            </div>
-            <div className="stats-row">
-              <div className="stat-card"><p className="stat-num">{schedules.length}</p><p className="stat-label">Total Schedules</p></div>
-              <div className="stat-card"><p className="stat-num">{[...new Set(schedules.map(s=>s.flightId))].length}</p><p className="stat-label">Flights Scheduled</p></div>
-              <div className="stat-card"><p className="stat-num">{[...new Set(schedules.map(s=>s.routeId))].length}</p><p className="stat-label">Routes Active</p></div>
-            </div>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead><tr><th>Schedule ID</th><th>Flight ID</th><th>Route ID</th><th>Duration (min)</th><th>Available Days</th><th>Departure</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {schedules.length === 0 && <tr><td colSpan="7" className="empty-row">No schedules added yet.</td></tr>}
-                  {schedules.map(s => (
-                    <tr key={s.scheduleId}>
-                      <td><span className="id-badge">{s.scheduleId}</span></td>
-                      <td>{s.flightId}</td><td>{s.routeId}</td>
-                      <td>{s.travelDuration} min</td>
-                      <td><div className="day-chips">{s.availableDays.split(",").map(d=><span key={d} className="day-chip">{d}</span>)}</div></td>
-                      <td><span className="time-badge">{s.departureTime}</span></td>
-                      <td><div className="action-btns">
-                        <button className="btn-edit"   onClick={()=>editSchedule(s)}>✏ Edit</button>
-                        <button className="btn-delete" onClick={()=>setScheduleDel(s.scheduleId)}>🗑 Delete</button>
-                      </div></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <AdminSchedulesTab
+            schedules={schedules}
+            onAdd={() => openAdd("schedules")}
+            onEdit={editSchedule}
+            onDelete={setScheduleDel}
+          />
         )}
 
-        {/* ─── BOOKINGS TAB ─────────────────────────── */}        
         {tab === "bookings" && (
-          <div className="tab-content">
-            <div className="tab-header">
-              <div>
-                <h1 className="tab-title">Bookings</h1>
-                <p className="tab-sub">Flight-wise booking status and remaining seat capacity</p>
-              </div>
-            </div>
-
-            <div className="stats-row">
-              <div className="stat-card">
-                <p className="stat-num">{totalBookedSeats.toLocaleString()}</p>
-                <p className="stat-label">Booked Seats</p>
-              </div>
-              <div className="stat-card">
-                <p className="stat-num">{totalRemainingSeats.toLocaleString()}</p>
-                <p className="stat-label">Remaining Seats</p>
-              </div>
-              <div className="stat-card">
-                <p className="stat-num">{fullyBookedFlights}</p>
-                <p className="stat-label">Fully Booked Flights</p>
-              </div>
-            </div>
-
-            <div className="booking-highlight-grid">
-              <div className="booking-summary-card">
-                <p className="booking-summary-label">Top booked flight</p>
-                <p className="booking-summary-title">
-                  {topBookedFlight.flightName} <span>({topBookedFlight.flightId})</span>
-                </p>
-                <p className="booking-summary-meta">
-                  {topBookedFlight.bookedSeats} bookings recorded so far
-                </p>
-              </div>
-              <div className="booking-summary-card">
-                <p className="booking-summary-label">Overall occupancy</p>
-                <p className="booking-summary-title">
-                  {totalSeats ? Math.round((totalBookedSeats / totalSeats) * 100) : 0}%
-                </p>
-                <p className="booking-summary-meta">
-                  Based on all flights currently available in the system
-                </p>
-              </div>
-            </div>
-
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Flight</th>
-                    <th>Route</th>
-                    <th>Total Seats</th>
-                    <th>Orders</th>
-                    <th>Seats Left</th>
-                    <th>Occupancy</th>
-                    <th>Schedules</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookingRows.length === 0 && (
-                    <tr>
-                      <td colSpan="7" className="empty-row">No flight booking data available yet.</td>
-                    </tr>
-                  )}
-                  {bookingRows.map((flight) => (
-                    <tr key={flight.flightId}>
-                      <td>
-                        <div className="booking-flight-cell">
-                          <span className="booking-flight-id">{flight.flightId}</span>
-                          <span className="booking-flight-name">{flight.flightName}</span>
-                        </div>
-                      </td>
-                      <td className="booking-route-cell">
-                        <ul className="booking-route-list">
-                          {flight.routeDetails.map((route) => (
-                            <li key={`${flight.flightId}-${route.routeId}`} className="booking-route-item">
-                              <span className="booking-route-name">{route.label}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                      <td>{Number(flight.seatingCapacity || 0)}</td>
-                      <td>{flight.bookingCount}</td>
-                      <td>
-                        <span className={`booking-count ${flight.remainingSeats === 0 ? "full" : "remaining"}`}>
-                          {flight.remainingSeats}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="occupancy-cell">
-                          <div className="occupancy-bar">
-                            <div
-                              className={`occupancy-fill ${flight.remainingSeats === 0 ? "danger" : ""}`}
-                              style={{ width: `${Math.min(flight.occupancy, 100)}%` }}
-                            />
-                          </div>
-                          <span>{Math.round(flight.occupancy)}%</span>
-                        </div>
-                      </td>
-                      <td>{flight.scheduleCount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <AdminBookingsTab
+            bookingRows={bookingRows}
+            totalBookedSeats={totalBookedSeats}
+            totalRemainingSeats={totalRemainingSeats}
+            fullyBookedFlights={fullyBookedFlights}
+            topBookedFlight={topBookedFlight}
+            totalSeats={totalSeats}
+          />
         )}
 
-        {/* ─── USERS TAB (NEW) ─────────────────────────── */}
         {tab === "users" && (
-          <div className="tab-content">
-            <div className="tab-header">
-              <div>
-                <h1 className="tab-title">Users</h1>
-                <p className="tab-sub">Manage registered accounts</p>
-              </div>
-              {deleteRequests.length > 0 && (
-                <div className="del-req-badge" onClick={() => setNotifOpen(true)}>
-                  🔔 {deleteRequests.length} Delete Request{deleteRequests.length > 1 ? "s" : ""}
-                </div>
-              )}
-            </div>
-
-            <div className="stats-row">
-              <div className="stat-card"><p className="stat-num">{users.length-1}</p><p className="stat-label">Total Users</p></div>
-              <div className="stat-card"><p className="stat-num active-num">{users.filter(u=>u.status==="active").length}</p><p className="stat-label">Active</p></div>
-              <div className="stat-card"><p className="stat-num warn-num">{deleteRequests.length}</p><p className="stat-label">Delete Requests</p></div>
-            </div>
-
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>User ID</th><th>Name</th><th>Email</th>
-                    <th>Phone</th><th>Booked Flights</th><th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.length === 0 && <tr><td colSpan="6" className="empty-row">No users found.</td></tr>}
-                  {users
-                     .filter(u => u.userType !== "A")
-                     .map(u => {
-                    const hasRequest = deleteRequests.some(r => r.userId === u.userId);
-                    const displayUserId = getDisplayUserId(u);
-                    const bookingDetails = getUserBookingDetails(u.userId);
-                    return (
-                      <tr key={u.userId} className={hasRequest ? "row-warning" : ""}>
-                        <td><span className="id-badge">{displayUserId}</span></td>
-                        <td>
-                          <div className="user-cell">
-                            <div className="user-mini-avatar">{u.firstName.charAt(0)}</div>
-                            <span>{u.firstName} {u.lastName}</span>
-                            {hasRequest && <span className="pending-tag">Pending Delete</span>}
-                          </div>
-                        </td>
-                        <td>{u.email}</td>
-                        
-                        <td>{u.phoneNumber}</td>
-                        <td>
-                          {bookingDetails.flights.length ? (
-                            <div className="user-booking-tray-wrap">
-                              <button
-                                type="button"
-                                className={`user-booking-tray ${expandedUserBookings === u.userId ? "open" : ""}`}
-                                onClick={() =>
-                                  setExpandedUserBookings(expandedUserBookings === u.userId ? null : u.userId)
-                                }
-                                aria-label="View booked flights"
-                                title="View booked flights"
-                              >
-                                <span className="user-booking-tray-icon">
-                                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                    <path d="M3 7.5h18" />
-                                    <path d="M6 5h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
-                                    <path d="M8 11h8" />
-                                    <path d="M8 15h5" />
-                                  </svg>
-                                </span>
-                                <span className="user-booking-tray-count">{bookingDetails.flights.length}</span>
-                                <span className="user-booking-tray-arrow">
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M7 10l5 5 5-5z" />
-                                  </svg>
-                                </span>
-                              </button>
-                              {expandedUserBookings === u.userId && (
-                                <div className="user-booking-dropdown">
-                                  {bookingDetails.flights.map((flight) => (
-                                    <div key={`${u.userId}-${flight.label}`} className="user-booking-row">
-                                      <span className="user-booking-flight">{flight.label}</span>
-                                      <span className="user-booking-orders">× {flight.orders}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="user-booking-empty">No bookings yet</span>
-                          )}
-                        </td>
-                        <td>
-                          <button
-                            className="btn-delete"
-                            onClick={() => confirmDeleteUser(u.userId, `${u.firstName} ${u.lastName}`, false)}
-                          >
-                            🗑 Delete
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <AdminUsersTab
+            users={users}
+            deletedUsers={deletedUsers}
+            deleteRequests={deleteRequests}
+            expandedUserBookings={expandedUserBookings}
+            setExpandedUserBookings={setExpandedUserBookings}
+            getDisplayUserId={getDisplayUserId}
+            getUserBookingDetails={getUserBookingDetails}
+            confirmDeleteUser={confirmDeleteUser}
+            onNotificationClick={() => setNotifOpen(true)}
+          />
         )}
 
       </main>
 
-      {/* ══════════════════════════════════════
-          ALL EXISTING MODALS (unchanged)
-      ══════════════════════════════════════ */}
+      <AdminFlightModal
+        flightModal={flightModal}
+        flightEdit={flightEdit}
+        flightForm={flightForm}
+        setFlightForm={setFlightForm}
+        setFlightModal={setFlightModal}
+        saveFlight={saveFlight}
+      />
 
-      {/* Flight Modal */}
-      {flightModal && (
-        <div className="modal-overlay" onClick={()=>setFlightModal(false)}>
-          <div className="modal" onClick={e=>e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{flightEdit ? "Edit Flight" : "Add Flight"}</h2>
-              <button className="modal-close" onClick={()=>setFlightModal(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-row-2">
-                <div className="field">
-                  <label>Flight ID <span className="req">*</span></label>
-                  <input placeholder="e.g. FL003" value={flightForm.flightId} disabled={!!flightEdit}
-                    onChange={e=>setFlightForm({...flightForm, flightId:e.target.value})} />
-                </div>
-                <div className="field">
-                  <label>Flight Name <span className="req">*</span></label>
-                  <input placeholder="e.g. Sky Ways Premium" value={flightForm.flightName}
-                    onChange={e=>setFlightForm({...flightForm, flightName:e.target.value})} />
-                </div>
-              </div>
-              <div className="form-row-2">
-                <div className="field">
-                  <label>Seating Capacity <span className="req">*</span></label>
-                  <input type="number" min="1" placeholder="e.g. 180" value={flightForm.seatingCapacity}
-                    onChange={e=>setFlightForm({...flightForm, seatingCapacity:e.target.value})} />
-                </div>
-                <div className="field">
-                  <label>Reservation Capacity</label>
-                  <input type="number" min="0" placeholder="e.g. 20" value={flightForm.reservationCapacity}
-                    onChange={e=>setFlightForm({...flightForm, reservationCapacity:e.target.value})} />
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={()=>setFlightModal(false)}>Cancel</button>
-              <button className="btn-save" onClick={saveFlight}>{flightEdit ? "Update" : "Add Flight"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminRouteModal
+        routeModal={routeModal}
+        routeEdit={routeEdit}
+        routeForm={routeForm}
+        setRouteForm={setRouteForm}
+        setRouteModal={setRouteModal}
+        saveRoute={saveRoute}
+      />
 
-      {/* Route Modal */}
-      {routeModal && (
-        <div className="modal-overlay" onClick={()=>setRouteModal(false)}>
-          <div className="modal" onClick={e=>e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{routeEdit ? "Edit Route" : "Add Route"}</h2>
-              <button className="modal-close" onClick={()=>setRouteModal(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div className="field">
-                <label>Route ID <span className="req">*</span></label>
-                <input placeholder="e.g. RT003" value={routeForm.routeId} disabled={!!routeEdit}
-                  onChange={e=>setRouteForm({...routeForm, routeId:e.target.value})} />
-              </div>
-              <div className="form-row-2">
-                <div className="field"><label>Source <span className="req">*</span></label>
-                  <input placeholder="e.g. Delhi" value={routeForm.source}
-                    onChange={e=>setRouteForm({...routeForm, source:e.target.value})} /></div>
-                <div className="field"><label>Destination <span className="req">*</span></label>
-                  <input placeholder="e.g. Mumbai" value={routeForm.destination}
-                    onChange={e=>setRouteForm({...routeForm, destination:e.target.value})} /></div>
-              </div>
-              <div className="form-row-2">
-                <div className="field"><label>Distance (km) <span className="req">*</span></label>
-                  <input type="number" min="1" placeholder="e.g. 1150" value={routeForm.distance}
-                    onChange={e=>setRouteForm({...routeForm, distance:e.target.value})} /></div>
-                <div className="field"><label>Fare (₹)</label>
-                  <input type="number" min="0" placeholder="e.g. 4599" value={routeForm.fare}
-                    onChange={e=>setRouteForm({...routeForm, fare:e.target.value})} /></div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={()=>setRouteModal(false)}>Cancel</button>
-              <button className="btn-save" onClick={saveRoute}>{routeEdit ? "Update" : "Add Route"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminScheduleModal
+        scheduleModal={scheduleModal}
+        scheduleEdit={scheduleEdit}
+        scheduleForm={scheduleForm}
+        flights={flights}
+        routes={routes}
+        toggleDay={toggleDay}
+        setScheduleForm={setScheduleForm}
+        setScheduleModal={setScheduleModal}
+        saveSchedule={saveSchedule}
+        DAYS={DAYS}
+      />
 
-      {/* Schedule Modal */}
-      {scheduleModal && (
-        <div className="modal-overlay" onClick={()=>setScheduleModal(false)}>
-          <div className="modal modal-lg" onClick={e=>e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{scheduleEdit ? "Edit Schedule" : "Add Schedule"}</h2>
-              <button className="modal-close" onClick={()=>setScheduleModal(false)}>✕</button>
-            </div>
-            <div className="modal-body">
-              <div className="field"><label>Schedule ID <span className="req">*</span></label>
-                <input placeholder="e.g. SC003" value={scheduleForm.scheduleId} disabled={!!scheduleEdit}
-                  onChange={e=>setScheduleForm({...scheduleForm, scheduleId:e.target.value})} /></div>
-              <div className="form-row-2">
-                <div className="field"><label>Flight ID <span className="req">*</span></label>
-                  <select value={scheduleForm.flightId} onChange={e=>setScheduleForm({...scheduleForm, flightId:e.target.value})}>
-                    <option value="">Select Flight</option>
-                    {flights.map(f=><option key={f.flightId} value={f.flightId}>{f.flightId} — {f.flightName}</option>)}
-                  </select></div>
-                <div className="field"><label>Route ID <span className="req">*</span></label>
-                  <select value={scheduleForm.routeId} onChange={e=>setScheduleForm({...scheduleForm, routeId:e.target.value})}>
-                    <option value="">Select Route</option>
-                    {routes.map(r=><option key={r.routeId} value={r.routeId}>{r.routeId} — {r.source} → {r.destination}</option>)}
-                  </select></div>
-              </div>
-              <div className="form-row-2">
-                <div className="field"><label>Travel Duration (min) <span className="req">*</span></label>
-                  <input type="number" min="1" placeholder="e.g. 130" value={scheduleForm.travelDuration}
-                    onChange={e=>setScheduleForm({...scheduleForm, travelDuration:e.target.value})} /></div>
-                <div className="field"><label>Departure Time <span className="req">*</span></label>
-                  <input type="time" value={scheduleForm.departureTime}
-                    onChange={e=>setScheduleForm({...scheduleForm, departureTime:e.target.value})} /></div>
-              </div>
-              <div className="field"><label>Available Days <span className="req">*</span></label>
-                <div className="day-picker">
-                  {DAYS.map(d=>{
-                    const selected = scheduleForm.availableDays.split(",").includes(d);
-                    return <button key={d} type="button" className={`day-pick-btn ${selected?"selected":""}`} onClick={()=>toggleDay(d)}>{d}</button>;
-                  })}
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={()=>setScheduleModal(false)}>Cancel</button>
-              <button className="btn-save" onClick={saveSchedule}>{scheduleEdit ? "Update" : "Add Schedule"}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminDeleteConfirmModal
+        flightDel={flightDel}
+        routeDel={routeDel}
+        scheduleDel={scheduleDel}
+        onCancel={() => {
+          setFlightDel(null);
+          setRouteDel(null);
+          setScheduleDel(null);
+        }}
+        onDelete={() => {
+          if (flightDel) deleteFlight();
+          if (routeDel) deleteRoute();
+          if (scheduleDel) deleteSchedule();
+        }}
+      />
 
-      {/* Existing Delete Confirm */}
-      {(flightDel || routeDel || scheduleDel) && (
-        <div className="modal-overlay">
-          <div className="modal modal-sm">
-            <div className="modal-header"><h2>Confirm Delete</h2></div>
-            <div className="modal-body">
-              <p className="confirm-text">Are you sure you want to delete <strong>{flightDel || routeDel || scheduleDel}</strong>?</p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={()=>{ setFlightDel(null); setRouteDel(null); setScheduleDel(null); }}>Cancel</button>
-              <button className="btn-danger" onClick={()=>{ if(flightDel) deleteFlight(); if(routeDel) deleteRoute(); if(scheduleDel) deleteSchedule(); }}>🗑 Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AdminUserDeleteModal
+        userDelConfirm={userDelConfirm}
+        onCancel={() => setUserDelConfirm(null)}
+        onDelete={executeDeleteUser}
+      />
 
-      {/* ── NEW: User Delete Confirm Modal ── */}
-      {userDelConfirm && (
-        <div className="modal-overlay">
-          <div className="modal modal-sm user-del-modal">
-            <div className="modal-header">
-              <h2>Delete User Account</h2>
-            </div>
-            <div className="modal-body">
-              <div className="user-del-icon">⚠️</div>
-              <p className="confirm-text">
-                Permanently delete account of{" "}
-                <strong>{userDelConfirm.name}</strong>?<br />
-                <span className="del-warn">This action cannot be undone.</span>
-              </p>
-            </div>
-            <div className="modal-footer">
-              <button className="btn-cancel" onClick={() => setUserDelConfirm(null)}>Cancel</button>
-              <button className="btn-danger" onClick={executeDeleteUser}>🗑 Delete Permanently</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RouteScheduleModal 
+        selectedRoute={selectedRouteOnMap} 
+        flights={flights}
+        onClose={() => setSelectedRouteOnMap(null)} 
+      />
     </div>
   );
 }
