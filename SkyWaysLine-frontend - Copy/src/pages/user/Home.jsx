@@ -735,7 +735,13 @@ const handleLogout = async () => {
         </div>
         <div className="nav-links">
           <a href="#" className="nav-link active">Flights</a>
-          <a href="#" className="nav-link">My Bookings</a>
+          <button
+            type="button"
+            className="nav-link nav-link-button"
+            onClick={() => navigate("/my-bookings")}
+          >
+            My Bookings
+          </button>
         </div>
         <div className="nav-right">
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>

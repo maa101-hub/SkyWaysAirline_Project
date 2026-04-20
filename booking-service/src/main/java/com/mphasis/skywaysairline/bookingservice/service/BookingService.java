@@ -14,6 +14,7 @@ import com.mphasis.skywaysairline.bookingservice.client.FlightClient;
 import com.mphasis.skywaysairline.bookingservice.client.UserClient;
 import com.mphasis.skywaysairline.bookingservice.dto.BookingRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.FlightResponse;
+import com.mphasis.skywaysairline.bookingservice.dto.MyBookingDetails;
 import com.mphasis.skywaysairline.bookingservice.dto.PassengerDTO;
 import com.mphasis.skywaysairline.bookingservice.dto.PaymentConfirmRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.TicketResponse;
@@ -155,20 +156,28 @@ public class BookingService {
 
         List<PassengerDTO> passengerList = new ArrayList<>();
 
-        int seatNo = 1;
+        List<String> generatedSeats =
+                generateSeatNumbers(bookingReq.getScheduleId(), bookingReq.getPassengers().size());
+
+        int index = 0;
 
         for (PassengerDTO p : bookingReq.getPassengers()) {
+
+            String seatNo = generatedSeats.get(index++);
 
             Passenger passenger = new Passenger();
             passenger.setReservationId(res.getReservationId());
             passenger.setName(p.getName());
             passenger.setGender(p.getGender());
             passenger.setAge(p.getAge());
-            passenger.setSeatNo(seatNo++);
+            passenger.setSeatNo(seatNo);
 
             passengerRepo.save(passenger);
+
+            p.setSeatNo(seatNo);
             passengerList.add(p);
         }
+
 
         log.info("Passengers saved successfully");
 
@@ -321,21 +330,26 @@ public class BookingService {
                 res.getReservationId(), res.getUserId());
 
         List<PassengerDTO> passengerList = new ArrayList<>();
-        int seatNo = 1;
+        List<String> generatedSeats =
+                generateSeatNumbers(bookingReq.getScheduleId(), bookingReq.getPassengers().size());
+
+        int index = 0;
 
         for (PassengerDTO p : bookingReq.getPassengers()) {
+
+            String seatNo = generatedSeats.get(index++);
+
             Passenger passenger = new Passenger();
             passenger.setReservationId(res.getReservationId());
             passenger.setName(p.getName());
             passenger.setGender(p.getGender());
             passenger.setAge(p.getAge());
-            passenger.setSeatNo(seatNo++);
+            passenger.setSeatNo(seatNo);
 
             passengerRepo.save(passenger);
-            passengerList.add(p);
 
-            log.info("Passenger saved successfully. ReservationId: {}, PassengerName: {}, SeatNo: {}",
-                    res.getReservationId(), p.getName(), passenger.getSeatNo());
+            p.setSeatNo(seatNo);
+            passengerList.add(p);
         }
 
         log.info("All passengers saved successfully. ReservationId: {}, PassengerCount: {}",
@@ -375,4 +389,102 @@ public class BookingService {
     public List<Reservation> getAllBookings() {
         return reservationRepo.findAll();
     }
+    //seat genarte 
+    private List<String> generateSeatNumbers(String scheduleId, int seatsRequired) {
+
+        List<Reservation> reservations = reservationRepo.findByScheduleId(scheduleId);
+
+        List<String> reservationIds = reservations.stream()
+                .map(Reservation::getReservationId)
+                .toList();
+
+        List<Passenger> bookedPassengers = reservationIds.isEmpty()
+                ? new ArrayList<>()
+                : passengerRepo.findByReservationIdIn(reservationIds);
+
+        List<String> bookedSeats = bookedPassengers.stream()
+                .map(Passenger::getSeatNo)
+                .toList();
+
+        List<String> generatedSeats = new ArrayList<>();
+        String[] seatLetters = {"A", "B", "C", "D", "E", "F"};
+
+        for (int row = 1; row <= 40; row++) {
+            for (String letter : seatLetters) {
+                String seat = row + letter;
+
+                if (!bookedSeats.contains(seat)) {
+                    generatedSeats.add(seat);
+                }
+
+                if (generatedSeats.size() == seatsRequired) {
+                    return generatedSeats;
+                }
+            }
+        }
+
+        throw new FlightFullException("No seats available");
+    }
+
+    public List<MyBookingDetails> getFlightDetails(String userId) {
+       
+        List<Reservation> reservations = reservationRepo.findByUserId(userId);
+
+        if (reservations == null || reservations.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<MyBookingDetails> myBookings = new ArrayList<>();
+
+        for (Reservation reservation : reservations) {
+
+            FlightResponse flight =
+                    flightClient.getFlightDetails(reservation.getScheduleId());
+
+            List<Passenger> passengers =
+                    passengerRepo.findByReservationId(reservation.getReservationId());
+
+            List<PassengerDTO> passengerDTOs = new ArrayList<>();
+            List<String> names = new ArrayList<>();
+            List<String> seats = new ArrayList<>();
+
+            for (Passenger passenger : passengers) {
+                PassengerDTO dto = new PassengerDTO();
+                dto.setName(passenger.getName());
+                dto.setGender(passenger.getGender());
+                dto.setAge(passenger.getAge());
+                passengerDTOs.add(dto);
+                names.add(passenger.getName());
+                seats.add(String.valueOf(passenger.getSeatNo()));
+            }
+
+            MyBookingDetails myBooking = new MyBookingDetails();
+
+            myBooking.setReservationId(reservation.getReservationId());
+            myBooking.setUserId(reservation.getUserId());
+            myBooking.setScheduleId(reservation.getScheduleId());
+            myBooking.setBookingDate(reservation.getBookingDate());
+            myBooking.setJourneyDate(reservation.getJourneyDate());
+            myBooking.setNoOfSeats(reservation.getNoOfSeats());
+            myBooking.setTotalFare(reservation.getTotalFare());
+            myBooking.setBookingStatus(reservation.getBookingStatus());
+
+            myBooking.setFlightResponse(flight);
+            myBooking.setPassengers(passengerDTOs);
+
+            myBooking.setPassengerName(String.join(", ", names));
+            myBooking.setSeatNos(String.join(", ", seats));
+            myBooking.setAmountPaid(reservation.getTotalFare());
+
+            myBooking.setGate("C12");
+            myBooking.setTerminal("T3");
+            myBooking.setClassType("Economy");
+            myBooking.setGroup("E");
+
+            myBookings.add(myBooking);
+        }
+
+        return myBookings;
+    }
+
 }

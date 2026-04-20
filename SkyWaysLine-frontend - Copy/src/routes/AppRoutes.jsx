@@ -6,6 +6,7 @@ import Home from "../pages/user/Home";
 import Dashboard from "../pages/admin/Dashboard";
 import BookNow from "../pages/Booking/BookNow";
 import BoardingPass from "../pages/BoardingPass/BoardingPass";
+import MyBooking from "../pages/Booking/MyBooking";
 
 function AppRoutes() {
   return (
@@ -15,6 +16,7 @@ function AppRoutes() {
       <Route path="/home" element={<Home/>}/>
       <Route path="/admin" element={<Dashboard></Dashboard>}></Route>
       <Route path="/booking" element={<BookNow></BookNow>}></Route>
+      <Route path="/my-bookings" element={<MyBooking />} />
       <Route path="/boarding-pass" element={<BoardingPass />} />
     </Routes>
   );

@@ -272,11 +272,18 @@ public class FlightService {
 
         FlightResponse res =
                 new FlightResponse();
-
+        res.setFlightId(scheduleId);
         res.setFare(route.getFare());
         res.setAvailableSeats(
                 flight.getSeatingCapacity()
+                
         );
+        res.setDepartureTime(schedule.getDepartureTime());
+        res.setDestination(route.getDestination());
+        res.setDistance(route.getDistance());
+        res.setFlightName(flight.getFlightName());
+        res.setSource(route.getSource());
+        res.setTravelDuration(schedule.getTravelDuration());
 
         log.info(
                 "Flight details fetched successfully for ScheduleId: {}",

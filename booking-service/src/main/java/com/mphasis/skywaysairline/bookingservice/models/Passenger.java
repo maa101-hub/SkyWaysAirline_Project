@@ -18,7 +18,7 @@ public class Passenger {
     private String name;
     private String gender;
     private int age;
-    private int seatNo;
+    private String seatNo;
 	public int getId() {
 		return id;
 	}
@@ -49,10 +49,10 @@ public class Passenger {
 	public void setAge(int age) {
 		this.age = age;
 	}
-	public int getSeatNo() {
+	public String getSeatNo() {
 		return seatNo;
 	}
-	public void setSeatNo(int seatNo) {
+	public void setSeatNo(String seatNo) {
 		this.seatNo = seatNo;
 	}
     

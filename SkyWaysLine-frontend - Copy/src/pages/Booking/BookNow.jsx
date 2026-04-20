@@ -5,8 +5,6 @@ import axios from "axios";
 import { AuthContext } from "../../context/AuthContext";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const SEAT_LETTERS = ["A","B","C","D","E","F"];
-
 const STARS = Array.from({ length: 80 }, (_, i) => ({
   id: i,
   x: Math.random() * 100,
@@ -24,18 +22,6 @@ const blankPassenger = () => ({
   age: "",
   seatNo: "",
 });
-
-const generateSeatAssignments = (count) => {
-  const used = new Set();
-  const seats = [];
-  while (seats.length < count) {
-    const row = Math.floor(Math.random() * 25) + 10;
-    const letter = SEAT_LETTERS[Math.floor(Math.random() * SEAT_LETTERS.length)];
-    const seat = `${row}${letter}`;
-    if (!used.has(seat)) { used.add(seat); seats.push(seat); }
-  }
-  return seats;
-};
 
 const fareCalculation = (p, price) => p * price;
 
@@ -336,6 +322,31 @@ export default function BookNow() {
 
   const finalizeSuccess = async (ticketData) => {
     setTicket(ticketData);
+    const confirmedPassengers =
+      ticketData?.passengers ||
+      ticketData?.passengerList ||
+      ticketData?.passengerDTOs ||
+      [];
+
+    if (Array.isArray(confirmedPassengers) && confirmedPassengers.length > 0) {
+      setPassengers((prev) =>
+        prev.map((passenger, index) => {
+          const confirmed = confirmedPassengers[index] || {};
+
+          return {
+            ...passenger,
+            name: confirmed.name || passenger.name,
+            gender: confirmed.gender || passenger.gender,
+            age: confirmed.age || passenger.age,
+            seatNo:
+              confirmed.seatNo ||
+              confirmed.seatNumber ||
+              confirmed.seat ||
+              passenger.seatNo,
+          };
+        })
+      );
+    }
     setPayMsg("Booking Confirmed! ✓");
     await delay(600);
     setPhase("success");
@@ -343,13 +354,7 @@ export default function BookNow() {
   };
 
   const buildAssignedPassengers = () => {
-    const seatNumbers = generateSeatAssignments(passengers.length);
-    const assigned = passengers.map((p, i) => ({
-      ...p,
-      seatNo: p.seatNo || seatNumbers[i],
-    }));
-    setPassengers(assigned);
-    return assigned;
+    return passengers;
   };
 
   const buildBookingRequest = (assignedPax) => ({
@@ -357,7 +362,7 @@ export default function BookNow() {
     noOfSeats: assignedPax.length,
     userId: autoUserId,
     journeyDate: reservation.journeyDate,
-    passengers: assignedPax.map(({ name, gender, age, seatNo }) => ({ name, gender, age, seatNo })),
+    passengers: assignedPax.map(({ name, gender, age }) => ({ name, gender, age })),
   });
 
   const handleWalletPayment = async (bookingRequest, assignedPax) => {
@@ -472,9 +477,29 @@ export default function BookNow() {
     setPassengers([blankPassenger()]);
   };
 
-  const seatList = passengers.map((p) => p.seatNo || "—").join(", ");
+  const ticketPassengers =
+    ticket?.passengers ||
+    ticket?.passengerList ||
+    ticket?.passengerDTOs ||
+    [];
 
-  const boardingPassPayload = passengers.map((passenger, index) => ({
+  const confirmedPassengers =
+    Array.isArray(ticketPassengers) && ticketPassengers.length > 0
+      ? ticketPassengers.map((passenger, index) => ({
+          ...passengers[index],
+          ...passenger,
+          seatNo:
+            passenger.seatNo ||
+            passenger.seatNumber ||
+            passenger.seat ||
+            passengers[index]?.seatNo ||
+            "",
+        }))
+      : passengers;
+
+  const seatList = confirmedPassengers.map((p) => p.seatNo || "Pending").join(", ");
+
+  const boardingPassPayload = confirmedPassengers.map((passenger, index) => ({
     flightNumber:  ticket?.flightNumber || flight.flightId || "SW-411",
     passengerName: passenger.name || "Guest",
     fromCode:      flightData.fromCode || flight.source?.slice(0,3).toUpperCase() || "BOM",
@@ -486,7 +511,7 @@ export default function BookNow() {
     journeyDate:   reservation.journeyDate || ticket?.journeyDate || today,
     gate:          ticket?.gate     || "B" + (Math.floor(Math.random() * 20) + 10),
     terminal:      ticket?.terminal || "T3",
-    seatNos:       passenger.seatNo || "—",
+    seatNos:       passenger.seatNo || "Pending",
     boardingTime:  depTime || "22:45",
     group:         flightData.cabinClass?.slice(0,1).toUpperCase() || "E",
     classType:     flightData.cabinClass || "Economy",
