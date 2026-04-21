@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useState, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
-import "./MyBooking.css";
+// import "./MyBooking.css";
 
 /* ─── axios auth interceptor ─── */
 axios.interceptors.request.use((config) => {

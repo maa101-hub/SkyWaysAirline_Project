@@ -1,5 +1,5 @@
 import { useState,useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./Home.css";
 import axios from "axios";
 
@@ -735,13 +735,7 @@ const handleLogout = async () => {
         </div>
         <div className="nav-links">
           <a href="#" className="nav-link active">Flights</a>
-          <button
-            type="button"
-            className="nav-link nav-link-button"
-            onClick={() => navigate("/my-bookings")}
-          >
-            My Bookings
-          </button>
+          <Link to="/my-bookings" className="nav-link">My Bookings</Link>
         </div>
         <div className="nav-right">
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
