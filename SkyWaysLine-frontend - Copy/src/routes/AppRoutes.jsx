@@ -55,7 +55,6 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-      <Route path="/about" element={<AboutPage />} />
     </Routes>
 
   );

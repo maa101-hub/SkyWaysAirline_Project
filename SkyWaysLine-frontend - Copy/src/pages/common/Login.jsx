@@ -375,7 +375,7 @@ export default function Login() {
             {theme === "light" ? "🌙" : "☀️"}
           </button>
           <span className="nav-text">Don&apos;t have an account?</span>
-          <a href="/" className="nav-cta">Sign Up</a>
+          <a href="/signup" className="nav-cta">Sign Up</a>
         </div>
       </nav>
 
@@ -709,7 +709,7 @@ export default function Login() {
 
               <hr className="divider" />
               <p className="footer-note">
-                Don&apos;t have an account? <a href="/">Create one →</a>
+                Don&apos;t have an account? <a href="/signup">Create one →</a>
               </p>
             </>
           )}
