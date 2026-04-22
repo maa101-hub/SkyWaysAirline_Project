@@ -157,6 +157,7 @@ const MOCK_DELETE_REQUESTS = [
   { reqId:"REQ-002", userId:"USR-005", name:"Vikram Joshi", email:"vikram@email.com", requestedAt:"2024-06-11 14:15", reason:"Privacy concerns" },
 ];
 const DELETED_USERS_STORAGE_KEY = "skyways_admin_deleted_users";
+const AUTH_EVENT_KEY = "skyways_auth_event";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -214,6 +215,25 @@ export default function Dashboard() {
     }
   }, []);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await getUsers();
+      const nextUsers = Array.isArray(res.data)
+        ? res.data.map((u) => ({
+            ...u,
+            status:
+              u?.status === 1 || String(u?.status ?? "").trim() === "1" || String(u?.status || "").toLowerCase() === "active"
+                ? "active"
+                : "inactive",
+          }))
+        : [];
+
+      setUsers(nextUsers);
+    } catch (err) {
+      console.error("Error fetching users:", err);
+    }
+  }, []);
+
   useEffect(() => {
     flightAPI.get("/api/flights").then((res) => setFlights(res.data.data)).catch(console.error);
   }, []);
@@ -260,15 +280,35 @@ export default function Dashboard() {
   }, [fetchBookings]);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const res = await getUsers();
-        setUsers(res.data);
-      } catch (err) {
-        console.error("Error fetching users:", err);
+    fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUsers();
+    }, 10000);
+
+    const handleAuthSync = (event) => {
+      if (event.key === AUTH_EVENT_KEY) {
+        fetchUsers();
       }
-    })();
-  }, []);
+    };
+
+    const handleAuthEvent = () => {
+      fetchUsers();
+    };
+
+    window.addEventListener("storage", handleAuthSync);
+    window.addEventListener("skyways-auth-event", handleAuthEvent);
+    window.addEventListener("focus", fetchUsers);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleAuthSync);
+      window.removeEventListener("skyways-auth-event", handleAuthEvent);
+      window.removeEventListener("focus", fetchUsers);
+    };
+  }, [fetchUsers]);
 
   useEffect(() => {
     try {

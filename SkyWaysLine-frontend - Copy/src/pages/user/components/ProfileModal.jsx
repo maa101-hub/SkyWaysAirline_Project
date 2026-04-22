@@ -86,7 +86,7 @@ export default function ProfileModal({ onClose }) {
     .join("")
     .toUpperCase();
   const shortUserId = getShortUserId(profile);
-
+  console.log("Profile data:", profile); // Debug log
   return (
     <div className="pf-overlay" onClick={onClose}>
       <div className="pf-modal" onClick={(e) => e.stopPropagation()}>

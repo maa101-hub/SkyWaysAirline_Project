@@ -3,6 +3,21 @@ import { jwtDecode } from "jwt-decode";
 import axios from "axios";
 export const AuthContext = createContext();
 
+const AUTH_EVENT_KEY = "skyways_auth_event";
+
+const broadcastAuthEvent = (type, userId) => {
+  const payload = JSON.stringify({ type, userId, at: Date.now() });
+
+  try {
+    localStorage.setItem(AUTH_EVENT_KEY, payload);
+    window.dispatchEvent(
+      new CustomEvent("skyways-auth-event", { detail: { type, userId } })
+    );
+  } catch (err) {
+    console.log("Unable to broadcast auth event", err);
+  }
+};
+
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [profile,setProfile]=useState(null);
@@ -84,6 +99,7 @@ const login = async (token) => {
     setUser(userData);
     setProfile(res.data); // 🔥 important
     SetName(res.data.firstName); 
+    broadcastAuthEvent("login", res.data?.userId || userData.email);
   } catch {
     localStorage.removeItem("token");
     setUser(null);
@@ -95,11 +111,13 @@ const login = async (token) => {
 };
   // ✅ logout
   const logout = () => {
+    const currentUserId = profile?.userId || user?.email || null;
     localStorage.removeItem("token");
     setUser(null);
     setProfile(null);
     SetName("");
     setAuthLoading(false);
+    broadcastAuthEvent("logout", currentUserId);
   };
 
   return (

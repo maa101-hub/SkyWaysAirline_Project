@@ -9,6 +9,11 @@ export default function AdminOverviewTab({
   schedules,
   deleteRequests,
 }) {
+  const activeUsers = users.filter(
+    (u) =>
+      u.userType !== "A" &&
+      (u.status === 1 || String(u.status ?? "").trim() === "1" || String(u.status || "").toLowerCase() === "active")
+  );
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
   const MOCK_REVENUE_MONTHLY = [
     420000, 510000, 380000, 620000, 590000, 710000,
@@ -51,11 +56,9 @@ export default function AdminOverviewTab({
         <div className="ov-card users-card">
           <div className="ov-card-icon">👥</div>
           <div>
-            <p className="ov-label">Registered Users</p>
-            <p className="ov-value">
-              {users.filter((u) => u.userType !== "A").length}
-            </p>
-            <p className="ov-sub">Active accounts</p>
+            <p className="ov-label">Active Users</p>
+            <p className="ov-value">{activeUsers.length}</p>
+            <p className="ov-sub">Currently logged in</p>
           </div>
         </div>
 
