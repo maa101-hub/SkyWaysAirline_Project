@@ -1,29 +1,54 @@
 import { useEffect, useRef } from "react";
  import "./AboutPage.css";
 
-const team = [
-  {
-    initials: "SR",
-    name: "Sourabh Ramteke",
-    role: "Backend & API Developer",
-    bio: "Built the core flight, user, and booking APIs that power SkyWays. Focused on secure authentication, reliable data flow, and smooth backend integration.",
+const teamTree = {
+  manager: {
+    initials: "VS",
+    name: "VijayAanand SP",
+    role: "Project Manager",
+    bio: "Guided the project planning, feature priorities, reviews, and delivery flow for the SkyWays Airline system.",
     gradient: "linear-gradient(135deg,#0ea5e9,#0369a1)",
   },
-  {
-    initials: "RK",
-    name: "Rohit Kaithwas",
-    role: "Frontend Developer",
-    bio: "Designed and developed the customer-facing pages, flight search experience, and responsive UI so passengers can browse, book, and manage trips easily.",
-    gradient: "linear-gradient(135deg,#f0a500,#c07a00)",
-  },
-  {
-    initials: "PS",
-    name: "Prashant Kumar Singh",
-    role: "Booking & Payment Integration",
-    bio: "Worked on booking flow, wallet handling, boarding pass generation, and final feature testing to make the travel process complete from search to confirmation.",
-    gradient: "linear-gradient(135deg,#22c55e,#15803d)",
-  },
-];
+  mentors: [
+    {
+      initials: "NS",
+      name: "Nitin Savriya",
+      role: "Backend Mentor",
+      bio: "Mentored the backend design, API structure, authentication flow, and service integration approach.",
+      gradient: "linear-gradient(135deg,#22c55e,#15803d)",
+    },
+    {
+      initials: "AC",
+      name: "Ashish Choudhry",
+      role: "Frontend Mentor",
+      bio: "Mentored the frontend structure, page design, responsive layout, and user experience polish.",
+      gradient: "linear-gradient(135deg,#a855f7,#7e22ce)",
+    },
+  ],
+  members: [
+    {
+      initials: "SR",
+      name: "Sourabh Ramteke",
+      role: "Backend & API Developer",
+      bio: "Developed the core backend flow for flights, users, bookings, and secure data communication.",
+      gradient: "linear-gradient(135deg,#0ea5e9,#0369a1)",
+    },
+    {
+      initials: "RK",
+      name: "Rohit Kaithwas",
+      role: "Frontend Developer",
+      bio: "Built the customer-facing UI, flight search screens, booking pages, and responsive user flows.",
+      gradient: "linear-gradient(135deg,#ef4444,#b91c1c)",
+    },
+    {
+      initials: "PS",
+      name: "Prashant Kumar Singh",
+      role: "Booking & Payment Developer",
+      bio: "Worked on booking flow, wallet handling, boarding pass generation, and confirmation features.",
+      gradient: "linear-gradient(135deg,#f0a500,#c07a00)",
+    },
+  ],
+};
 
 const testimonials = [
   {
@@ -280,18 +305,50 @@ export default function AboutPage() {
         <div className="team-center">
           <div className="team-head reveal">
             <div className="section-label">✦ The People Behind The Wings</div>
-            <h2 className="section-title">Meet Our <em>Leadership Team</em></h2>
-            <p className="section-sub">Experienced aviation professionals dedicated to redefining how India flies.</p>
+            <h2 className="section-title">Meet Our <em>Project Team</em></h2>
+            <p className="section-sub">A guided project structure with management, mentoring, and development responsibilities clearly connected.</p>
           </div>
-          <div className="team-grid">
-            {team.map((member, index) => (
-              <div className={`team-card reveal delay-${String((index + 1) * 5).padStart(2, "0")}`} key={member.name}>
-                <div className="team-avatar" style={{ background: member.gradient }}>{member.initials}</div>
-                <div className="team-name">{member.name}</div>
-                <div className="team-role">{member.role}</div>
-                <div className="team-bio">{member.bio}</div>
+          <div className="team-tree reveal">
+            <div className="tree-level tree-manager">
+              <div className="team-card tree-card manager-card">
+                <div className="team-avatar" style={{ background: teamTree.manager.gradient }}>
+                  {teamTree.manager.initials}
+                </div>
+                <div className="team-name">{teamTree.manager.name}</div>
+                <div className="team-role">{teamTree.manager.role}</div>
+                <div className="team-bio">{teamTree.manager.bio}</div>
               </div>
-            ))}
+            </div>
+
+            <div className="tree-connector tree-connector-main" />
+
+            <div className="tree-level tree-mentors">
+              {teamTree.mentors.map((mentor) => (
+                <div className="team-card tree-card mentor-card" key={mentor.name}>
+                  <div className="team-avatar" style={{ background: mentor.gradient }}>
+                    {mentor.initials}
+                  </div>
+                  <div className="team-name">{mentor.name}</div>
+                  <div className="team-role">{mentor.role}</div>
+                  <div className="team-bio">{mentor.bio}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="tree-connector tree-connector-members" />
+
+            <div className="tree-level tree-members">
+              {teamTree.members.map((member) => (
+                <div className="team-card tree-card member-card" key={member.name}>
+                  <div className="team-avatar" style={{ background: member.gradient }}>
+                    {member.initials}
+                  </div>
+                  <div className="team-name">{member.name}</div>
+                  <div className="team-role">{member.role}</div>
+                  <div className="team-bio">{member.bio}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

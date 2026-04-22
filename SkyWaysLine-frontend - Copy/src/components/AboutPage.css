@@ -383,10 +383,82 @@
 
 .team-section{padding:100px 6vw;background:var(--sky-50)}
 .team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+.team-tree{
+  position:relative;
+  max-width:1040px;
+  margin:0 auto;
+}
+.tree-level{
+  display:flex;
+  justify-content:center;
+  gap:28px;
+}
+.tree-manager{
+  margin-bottom:0;
+}
+.tree-mentors{
+  align-items:flex-start;
+  margin-bottom:0;
+}
+.tree-members{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:18px;
+  width:100%;
+  max-width:900px;
+  margin:0 auto;
+}
+.tree-connector{
+  position:relative;
+  width:2px;
+  background:linear-gradient(180deg,var(--sky-300),var(--sky-500));
+  margin:0 auto;
+}
+.tree-connector-main{
+  height:56px;
+}
+.tree-connector-main::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:0;
+  width:min(520px,72vw);
+  height:2px;
+  transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,var(--sky-300),var(--sky-500),var(--sky-300),transparent);
+}
+.tree-connector-members{
+  height:52px;
+}
+.tree-connector-members::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  bottom:0;
+  width:min(640px,78vw);
+  height:2px;
+  transform:translateX(-50%);
+  background:linear-gradient(90deg,transparent,var(--sky-300),var(--sky-500),var(--sky-300),transparent);
+}
 .team-card{
   background:#fff;border:1.5px solid var(--border);border-radius:22px;
   padding:28px 20px 24px;text-align:center;
   transition:transform .35s cubic-bezier(.34,1.56,.64,1),box-shadow .3s;
+}
+.tree-card{
+  width:100%;
+  max-width:280px;
+}
+.manager-card{
+  max-width:360px;
+  border-color:rgba(14,165,233,.32);
+  box-shadow:0 20px 52px rgba(14,165,233,.16);
+}
+.mentor-card{
+  max-width:320px;
+}
+.member-card{
+  min-height:245px;
 }
 .team-card:hover{transform:translateY(-8px);box-shadow:0 20px 50px rgba(14,165,233,.15)}
 .team-avatar{
@@ -458,6 +530,10 @@
   .steps-grid{grid-template-columns:1fr 1fr;gap:24px}
   .steps-grid::before{display:none}
   .team-grid{grid-template-columns:1fr 1fr}
+  .tree-mentors{flex-direction:column;align-items:center}
+  .tree-members{grid-template-columns:1fr 1fr;max-width:620px}
+  .tree-connector-main::after,
+  .tree-connector-members::after{display:none}
   .footer-grid{grid-template-columns:1fr 1fr}
 }
 
@@ -470,6 +546,8 @@
   .about-hero-stats{flex-wrap:wrap;width:90%;bottom:100px}
   .stat-block{flex:1;min-width:120px}
   .mission-grid,.feat-grid,.steps-grid,.team-grid{grid-template-columns:1fr}
+  .tree-members{grid-template-columns:1fr;max-width:320px}
+  .tree-card{max-width:320px}
   .footer-grid{grid-template-columns:1fr}
   .about-page section{padding-left:20px!important;padding-right:20px!important}
 }
