@@ -13,6 +13,90 @@ import ProfileModal from "./components/ProfileModal";
 import WalletModal from "./components/WalletModal";
 import { normalizeLocationInput } from "./components/homeUtils";
 
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+const DAY_ALIASES = {
+  sun: "Sunday",
+  sunday: "Sunday",
+  mon: "Monday",
+  monday: "Monday",
+  tue: "Tuesday",
+  tues: "Tuesday",
+  tuesday: "Tuesday",
+  wed: "Wednesday",
+  wednesday: "Wednesday",
+  thu: "Thursday",
+  thur: "Thursday",
+  thurs: "Thursday",
+  thursday: "Thursday",
+  fri: "Friday",
+  friday: "Friday",
+  sat: "Saturday",
+  saturday: "Saturday",
+};
+
+const getSelectedDay = (dateValue) => {
+  if (!dateValue) return "";
+
+  const [year, month, day] = dateValue.split("-").map(Number);
+  if (!year || !month || !day) return "";
+
+  return DAY_NAMES[new Date(year, month - 1, day).getDay()];
+};
+
+const normalizeDay = (dayValue) => {
+  const key = String(dayValue || "")
+    .trim()
+    .toLowerCase();
+
+  return DAY_ALIASES[key] || "";
+};
+
+const getFlightAvailableDays = (flight) => {
+  const availabilityFields = [
+    "availableDays",
+    "availableDay",
+    "operatingDays",
+    "operationDays",
+    "days",
+    "flightDays",
+    "scheduleDays",
+    "daysOfWeek",
+    "operatesOn",
+    "availableOn",
+    "dayOfWeek",
+  ];
+
+  for (const field of availabilityFields) {
+    if (flight?.[field]) return flight[field];
+  }
+
+  return null;
+};
+
+const isFlightAvailableOnDate = (flight, dateValue) => {
+  const selectedDay = getSelectedDay(dateValue);
+  const availableDays = getFlightAvailableDays(flight);
+
+  if (!selectedDay || !availableDays) return true;
+
+  const days = Array.isArray(availableDays)
+    ? availableDays
+    : String(availableDays)
+        .split(/[,\s|/]+/)
+        .filter(Boolean);
+
+  return days.some((day) => normalizeDay(day) === selectedDay);
+};
+
 export default function Home() {
   const navigate = useNavigate();
   const { profile, logout } = useContext(AuthContext);
@@ -60,7 +144,8 @@ export default function Home() {
         params: { source: trimmedFrom, destination: trimmedTo },
       });
 
-      setResults(res.data);
+      const flights = Array.isArray(res.data) ? res.data : [];
+      setResults(flights.filter((flight) => isFlightAvailableOnDate(flight, form.date)));
       setSearched(true);
     } catch (err) {
       console.error(err);
@@ -94,6 +179,7 @@ export default function Home() {
   }, [results, sortBy]);
 
   const today = new Date().toISOString().split("T")[0];
+  const selectedDay = getSelectedDay(form.date);
 
   return (
     <div className="home-bg">
@@ -138,8 +224,8 @@ export default function Home() {
           <div className="empty-icon">😔</div>
           <p className="empty-title">No flights found</p>
           <p className="empty-sub">
-            No flights from <strong>{form.from}</strong> to <strong>{form.to}</strong>.
-            Try different cities.
+            No flights from <strong>{form.from}</strong> to <strong>{form.to}</strong>
+            {selectedDay ? ` on ${selectedDay}` : ""}. Try a different date or cities.
           </p>
         </div>
       )}
