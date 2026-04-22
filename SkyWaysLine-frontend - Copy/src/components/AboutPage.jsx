@@ -5,7 +5,7 @@ import "./AboutPage.css";
 const teamTree = {
   manager: {
     initials: "VS",
-    name: "VijayAanand SP",
+    name: "VijaiAnand SP",
     role: "Project Manager",
     bio: "Guided the project planning, feature priorities, reviews, and delivery flow for the SkyWays Airline system.",
     gradient: "linear-gradient(135deg,#0ea5e9,#0369a1)",
@@ -13,14 +13,14 @@ const teamTree = {
   mentors: [
     {
       initials: "NS",
-      name: "Nitin Savriya",
+      name: "Nitin Sarvaiya",
       role: "Backend Mentor",
       bio: "Mentored the backend design, API structure, authentication flow, and service integration approach.",
       gradient: "linear-gradient(135deg,#22c55e,#15803d)",
     },
     {
       initials: "AC",
-      name: "Ashish Choudhry",
+      name: "Ashish Choudhary",
       role: "Frontend Mentor",
       bio: "Mentored the frontend structure, page design, responsive layout, and user experience polish.",
       gradient: "linear-gradient(135deg,#a855f7,#7e22ce)",
