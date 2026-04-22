@@ -1,5 +1,4 @@
-import { useContext } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Login from "../pages/common/Login";
 import SignUp from "../pages/common/SignUp";
 import ProtectedRoute from "../components/common/ProtectedRoute";
@@ -8,23 +7,14 @@ import Dashboard from "../pages/admin/Dashboard";
 import BookNow from "../pages/Booking/BookNow";
 import BoardingPass from "../pages/BoardingPass/BoardingPass";
 import MyBooking from "../pages/Booking/MyBooking";
-import { AuthContext } from "../context/AuthContext";
+import AboutPage from "../components/AboutPage";
 
 function AppRoutes() {
-  const { user, authLoading } = useContext(AuthContext);
-
-  const rootElement = authLoading
-    ? null
-    : user
-      ? user.role === "C"
-        ? <Navigate to="/home" replace />
-        : <Navigate to="/admin" replace />
-      : <SignUp />;
-
   return (
     <Routes>
-      <Route path="/" element={rootElement} />
+      <Route path="/" element={<AboutPage />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
       <Route
         path="/home"
         element={
@@ -65,7 +55,9 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/about" element={<AboutPage />} />
     </Routes>
+
   );
 }
 
