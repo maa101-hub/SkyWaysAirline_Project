@@ -8,11 +8,14 @@ import BookNow from "../pages/Booking/BookNow";
 import BoardingPass from "../pages/BoardingPass/BoardingPass";
 import MyBooking from "../pages/Booking/MyBooking";
 import AboutPage from "../components/AboutPage";
+import SupportLinkPage from "../components/SupportLinkPage";
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<AboutPage />} />
+      <Route path="/support/:slug" element={<SupportLinkPage />} />
+      <Route path="/social/:platform" element={<SupportLinkPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<SignUp />} />
       <Route

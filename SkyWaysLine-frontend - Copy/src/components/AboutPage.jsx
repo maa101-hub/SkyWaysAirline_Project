@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react";
- import "./AboutPage.css";
+import { useContext, useEffect, useRef } from "react";
+import { ThemeContext } from "../context/ThemeContext";
+import "./AboutPage.css";
 
 const teamTree = {
   manager: {
@@ -93,9 +94,52 @@ const testimonials = [
   },
 ];
 
+const supportChannels = [
+  {
+    icon: "☎",
+    title: "24×7 Helpline",
+    detail: "+91 80000 12345",
+    sub: "Average wait time: under 2 minutes",
+  },
+  {
+    icon: "✉",
+    title: "Email Support",
+    detail: "support@skywaysairline.in",
+    sub: "Typical response: within 30 minutes",
+  },
+  {
+    icon: "💬",
+    title: "WhatsApp Assistance",
+    detail: "+91 80000 54321",
+    sub: "Live chat: 06:00 AM to 11:00 PM IST",
+  },
+  {
+    icon: "⌂",
+    title: "Airport Help Desk",
+    detail: "Available at all SkyWays counters",
+    sub: "Opens 3 hours before each departure",
+  },
+];
+
+const supportQuickLinks = [
+  { label: "Help Centre", href: "/support/help-centre" },
+  { label: "Contact Us", href: "/support/contact-us" },
+  { label: "Refund Policy", href: "/support/refund-policy" },
+  { label: "Terms & Privacy", href: "/support/terms-privacy" },
+];
+
+const socialMediaLinks = [
+  { label: "Instagram", href: "/social/instagram" },
+  { label: "X", href: "/social/x" },
+  { label: "Facebook", href: "/social/facebook" },
+  { label: "YouTube", href: "/social/youtube" },
+  { label: "LinkedIn", href: "/social/linkedin" },
+];
+
 export default function AboutPage() {
   const pageRef = useRef(null);
   const navRef = useRef(null);
+  const { theme, toggleTheme } = useContext(ThemeContext);
 
   useEffect(() => {
     const root = pageRef.current;
@@ -146,21 +190,27 @@ export default function AboutPage() {
 
   return (
     <div className="about-page" ref={pageRef}>
+      <div className="stars about-stars" />
       <nav className="about-nav" ref={navRef}>
         <a href="#top" className="about-nav-logo">
-          Sky<span>Ways</span>
-          <em>Airline</em>
+          ✈︎ Sky<span>Ways</span>
         </a>
         <div className="about-nav-links">
           <a href="#about" className="about-nav-link">About</a>
           <a href="#mission" className="about-nav-link">Mission</a>
           <a href="#how" className="about-nav-link">How It Works</a>
           <a href="#features" className="about-nav-link">Why Us</a>
+          <a href="#support" className="about-nav-link">Support</a>
           <a href="#team" className="about-nav-link">Team</a>
         </div>
-        <a className="about-nav-cta" href="/login">
-          Book a Flight
-        </a>
+        <div className="about-nav-right">
+          <button className="about-theme-toggle" onClick={toggleTheme} title="Toggle Theme">
+            {theme === "light" ? "🌙" : "☀️"}
+          </button>
+          <a className="about-nav-cta" href="/login">
+            Book a Flight
+          </a>
+        </div>
       </nav>
 
       <section className="about-hero" id="top">
@@ -297,6 +347,62 @@ export default function AboutPage() {
             <div className="feat-card reveal delay-19"><span className="feat-icon">◎</span><h4 className="feat-title">50+ Destinations</h4><p className="feat-text">From Leh to Andaman, we fly to every corner of incredible India.</p></div>
             <div className="feat-card reveal delay-24"><span className="feat-icon">▣</span><h4 className="feat-title">Generous Baggage Policy</h4><p className="feat-text">Carry more without the stress with inclusive baggage allowance.</p></div>
             <div className="feat-card reveal delay-29"><span className="feat-icon">☎</span><h4 className="feat-title">24/7 Live Support</h4><p className="feat-text">Real humans, real help, any time of day.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section className="support-section" id="support">
+        <div className="support-center">
+          <div className="support-head reveal">
+            <div className="section-label">✦ Always Here To Help</div>
+            <h2 className="section-title">Support That Feels <em>Human</em></h2>
+            <p className="section-sub centered">
+              From booking questions to refunds and travel updates, our support team is available across multiple channels.
+            </p>
+          </div>
+
+          <div className="support-grid">
+            {supportChannels.map((channel, index) => (
+              <div className={`support-card reveal delay-${index * 5}`} key={channel.title}>
+                <div className="support-icon">{channel.icon}</div>
+                <h4 className="support-title">{channel.title}</h4>
+                <p className="support-detail">{channel.detail}</p>
+                <p className="support-sub">{channel.sub}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="support-faq reveal">
+            <h3>Quick Help</h3>
+            <ul>
+              <li><strong>Refund timeline:</strong> Wallet refunds instantly, card/UPI refunds in 3–5 working days.</li>
+              <li><strong>Flight changes:</strong> Manage date and route from My Bookings up to 2 hours before departure.</li>
+              <li><strong>Boarding pass issue:</strong> Regenerate from My Bookings or get help at airport counters.</li>
+            </ul>
+          </div>
+
+          <div className="support-links-grid reveal">
+            <div className="support-links-card">
+              <h3>Support Links</h3>
+              <div className="support-links-list">
+                {supportQuickLinks.map((item) => (
+                  <a key={item.label} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div className="support-links-card">
+              <h3>Follow Us</h3>
+              <div className="social-links-list">
+                {socialMediaLinks.map((item) => (
+                  <a key={item.label} href={item.href}>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </section>
