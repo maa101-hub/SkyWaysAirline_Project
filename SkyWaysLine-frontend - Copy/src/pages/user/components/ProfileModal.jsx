@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { AuthContext } from "../../../context/AuthContext";
 import { getShortUserId } from "./homeUtils";
+import { submitDeleteRequestEvent } from "../../../api";
 
 function formatDOB(dob) {
   if (!dob) return "—";
@@ -13,6 +14,10 @@ export default function ProfileModal({ onClose }) {
   const [editForm, setEditForm] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [requestingDelete, setRequestingDelete] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteReasonError, setDeleteReasonError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
@@ -76,6 +81,51 @@ export default function ProfileModal({ onClose }) {
     }
   };
 
+  const openDeleteDialog = () => {
+    setDeleteReason("");
+    setDeleteReasonError("");
+    setShowDeleteDialog(true);
+    setError("");
+    setSuccessMsg("");
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!profile?.userId) {
+      setError("Unable to submit request. Please try again.");
+      return;
+    }
+
+    const reason = deleteReason.trim();
+    if (!reason) {
+      setDeleteReasonError("Please write a reason before sending request.");
+      return;
+    }
+
+    setRequestingDelete(true);
+    setDeleteReasonError("");
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const fullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim();
+
+      await submitDeleteRequestEvent({
+        userId: profile.userId,
+        name: fullName || "User",
+        email: profile.email || "",
+        reason,
+      });
+
+      setSuccessMsg("Delete request sent to admin successfully.");
+      setShowDeleteDialog(false);
+      setDeleteReason("");
+    } catch (err) {
+      setError("Failed to submit delete request.");
+    } finally {
+      setRequestingDelete(false);
+    }
+  };
+
   const displayName = profile
     ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || "User"
     : "User";
@@ -86,7 +136,7 @@ export default function ProfileModal({ onClose }) {
     .join("")
     .toUpperCase();
   const shortUserId = getShortUserId(profile);
-  console.log("Profile data:", profile); // Debug log
+
   return (
     <div className="pf-overlay" onClick={onClose}>
       <div className="pf-modal" onClick={(e) => e.stopPropagation()}>
@@ -211,9 +261,18 @@ export default function ProfileModal({ onClose }) {
 
             <div className="pf-footer">
               {!isEditing ? (
-                <button className="pf-edit-btn" onClick={() => setIsEditing(true)}>
-                  ✏ Edit Profile
-                </button>
+                <>
+                  <button
+                    className="pf-cancel-btn"
+                    onClick={openDeleteDialog}
+                    disabled={requestingDelete}
+                  >
+                    ⚠ Request Delete Account
+                  </button>
+                  <button className="pf-edit-btn" onClick={() => setIsEditing(true)}>
+                    ✏ Edit Profile
+                  </button>
+                </>
               ) : (
                 <>
                   <button
@@ -234,6 +293,53 @@ export default function ProfileModal({ onClose }) {
           </>
         )}
       </div>
+
+      {showDeleteDialog && (
+        <div
+          className="pf-delete-overlay"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!requestingDelete) setShowDeleteDialog(false);
+          }}
+        >
+          <div className="pf-delete-dialog" onClick={(e) => e.stopPropagation()}>
+            <p className="pf-delete-title">Request Account Deletion</p>
+            <p className="pf-delete-msg">Kya hua bhai, delete kyon karna chahte ho?</p>
+
+            <textarea
+              className="pf-delete-textarea"
+              placeholder="Please write your reason..."
+              value={deleteReason}
+              onChange={(e) => {
+                setDeleteReason(e.target.value);
+                if (deleteReasonError) setDeleteReasonError("");
+              }}
+              rows={4}
+              maxLength={280}
+            />
+
+            <div className="pf-delete-meta">{deleteReason.trim().length}/280</div>
+            {deleteReasonError && <p className="pf-delete-error">{deleteReasonError}</p>}
+
+            <div className="pf-delete-actions">
+              <button
+                className="pf-cancel-btn"
+                onClick={() => setShowDeleteDialog(false)}
+                disabled={requestingDelete}
+              >
+                Cancel
+              </button>
+              <button
+                className="pf-delete-send-btn"
+                onClick={handleDeleteRequest}
+                disabled={requestingDelete}
+              >
+                {requestingDelete ? "Sending..." : "Send Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

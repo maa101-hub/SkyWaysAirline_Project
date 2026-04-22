@@ -53,7 +53,8 @@ public class SecurityConfig {
                                 "/api/users/**",
                                 "/api/users/wallet",
                                 "/api/users/id-by-email",
-                                "/api/users/wallet/add"
+                                "/api/users/wallet/add",
+                                "/ws-notifications/**"
                         ).permitAll()
 
                         .requestMatchers("/api/users/**")

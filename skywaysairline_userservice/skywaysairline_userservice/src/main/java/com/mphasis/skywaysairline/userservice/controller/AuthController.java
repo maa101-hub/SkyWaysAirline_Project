@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.mphasis.skywaysairline.userservice.dto.ForgotPasswordRequest;
 import com.mphasis.skywaysairline.userservice.dto.LoginRequest;
+import com.mphasis.skywaysairline.userservice.dto.DeleteRequestEventRequest;
 import com.mphasis.skywaysairline.userservice.dto.OtpGenerateRequest;
 import com.mphasis.skywaysairline.userservice.dto.OtpVerifyRequest;
 import com.mphasis.skywaysairline.userservice.dto.RegisterRequest;
@@ -105,6 +106,17 @@ public class AuthController {
                 userService.deleteUser(userId)
         );
     }
+
+        @PostMapping("/delete-request")
+        public ResponseEntity<String> submitDeleteRequest(
+                        @RequestBody DeleteRequestEventRequest request) {
+
+                log.info("Delete request event API called for userId: {}", request.getUserId());
+
+                return ResponseEntity.ok(
+                                userService.publishDeleteRequestEvent(request)
+                );
+        }
 
     @PutMapping("/{userId}")
     public ResponseEntity<String> update_status(

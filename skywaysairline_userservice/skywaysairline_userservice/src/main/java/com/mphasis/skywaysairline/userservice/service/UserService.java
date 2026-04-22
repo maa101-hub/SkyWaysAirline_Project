@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.mphasis.skywaysairline.userservice.dto.LoginRequest;
+import com.mphasis.skywaysairline.userservice.dto.DeleteRequestEventRequest;
 import com.mphasis.skywaysairline.userservice.dto.OtpVerifyRequest;
 import com.mphasis.skywaysairline.userservice.dto.RegisterRequest;
 import com.mphasis.skywaysairline.userservice.dto.ResetPasswordRequest;
@@ -48,6 +49,9 @@ public class UserService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private AdminNotificationPublisher adminNotificationPublisher;
 
     public String register(RegisterRequest request) {
 
@@ -241,10 +245,31 @@ public class UserService {
 
         credentialsRepo.save(credentials);
 
+        adminNotificationPublisher.publishUserDeleted(
+                credentials.getUserId(),
+                credentials.getUserProfile().getFirstName() + " " + credentials.getUserProfile().getLastName()
+        );
+
         log.info("User soft-deleted successfully for userId: {}", userId);
         return "User deleted successfully";
     }
     //-RK
+
+    public String publishDeleteRequestEvent(DeleteRequestEventRequest request) {
+
+        if (request == null || request.getUserId() == null || request.getUserId().isBlank()) {
+            throw new BadRequestException("userId is required");
+        }
+
+        adminNotificationPublisher.publishDeleteRequest(
+                request.getUserId(),
+                request.getName(),
+                request.getEmail(),
+                request.getReason()
+        );
+
+        return "Delete request event published";
+    }
     
     public String update_status(String userId) {
 

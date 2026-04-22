@@ -3,6 +3,8 @@ import "./Dashboard.css";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client/dist/sockjs";
 import { flightAPI, getUsers, deleteUser, getAllBookings } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
@@ -173,11 +175,46 @@ const resolveCityKey = (placeName) => {
   return matchedAlias ? CITY_ALIASES[matchedAlias] : null;
 };
 
-const MOCK_DELETE_REQUESTS = [
-  { reqId:"REQ-001", userId:"USR-003", name:"Amit Kumar",  email:"amit@email.com",  requestedAt:"2024-06-10 09:30", reason:"No longer needed" },
-  { reqId:"REQ-002", userId:"USR-005", name:"Vikram Joshi", email:"vikram@email.com", requestedAt:"2024-06-11 14:15", reason:"Privacy concerns" },
-];
 const AUTH_EVENT_KEY = "skyways_auth_event";
+const WS_NOTIFICATION_URL = "http://localhost:8082/ws-notifications";
+const NOTIF_STORAGE_KEY = "skyways_admin_notification_history";
+const MAX_NOTIFICATIONS = 80;
+
+const parseStoredNotifications = () => {
+  try {
+    const raw = localStorage.getItem(NOTIF_STORAGE_KEY);
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const createDeleteRequestNotification = (payload) => ({
+  reqId: payload.reqId,
+  userId: payload.userId,
+  name: payload.name || "Unknown User",
+  email: payload.email || "—",
+  requestedAt: payload.requestedAt || new Date().toISOString(),
+  reason: payload.reason || "",
+  type: "DELETE_REQUEST",
+  status: "pending",
+  read: false,
+});
+
+const createUserDeletedNotification = (payload) => ({
+  reqId: payload.reqId || `EVT-${Date.now()}`,
+  userId: payload.userId,
+  name: payload.name || "User",
+  email: payload.email || "—",
+  requestedAt: payload.requestedAt || new Date().toISOString(),
+  reason: "",
+  type: "USER_DELETED",
+  status: "info",
+  read: false,
+});
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -205,7 +242,7 @@ export default function Dashboard() {
 
   const [users, setUsers]                   = useState([]);
   const [bookings, setBookings]             = useState([]);
-  const [deleteRequests, setDeleteRequests] = useState(MOCK_DELETE_REQUESTS);
+  const [notifications, setNotifications]   = useState(() => parseStoredNotifications());
   const [notifOpen, setNotifOpen]           = useState(false);
   const [userDelConfirm, setUserDelConfirm] = useState(null); // { userId, name, fromRequest }
   const [expandedUserBookings, setExpandedUserBookings] = useState(null);
@@ -214,8 +251,13 @@ export default function Dashboard() {
   const [lineDashOffset, setLineDashOffset] = useState(0);
   const [selectedRouteOnMap, setSelectedRouteOnMap] = useState(null);
   const notifRef = useRef(null);
+  const stompClientRef = useRef(null);
   const { profile } = useContext(AuthContext);
   const wallet = profile?.wallet ?? 0;
+  const deleteRequests = notifications.filter(
+    (notification) => notification.type === "DELETE_REQUEST" && notification.status === "pending"
+  );
+  const unreadNotificationsCount = notifications.filter((notification) => !notification.read).length;
 
   const fetchBookings = useCallback(async () => {
     try {
@@ -336,6 +378,88 @@ export default function Dashboard() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(NOTIF_STORAGE_KEY, JSON.stringify(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
+    const client = new Client({
+      webSocketFactory: () => new SockJS(WS_NOTIFICATION_URL),
+      reconnectDelay: 5000,
+      debug: () => {},
+    });
+
+    client.onConnect = () => {
+      client.subscribe("/topic/admin/notifications", (frame) => {
+        try {
+          const payload = JSON.parse(frame.body || "{}");
+
+          if (payload.type === "DELETE_REQUEST") {
+            setNotifications((prev) => {
+              const alreadyExists = prev.some(
+                (request) =>
+                  request.type === "DELETE_REQUEST" &&
+                  request.status === "pending" &&
+                  (request.reqId === payload.reqId || request.userId === payload.userId)
+              );
+              if (alreadyExists) return prev;
+
+              return [createDeleteRequestNotification(payload), ...prev].slice(0, MAX_NOTIFICATIONS);
+            });
+            return;
+          }
+
+          if (payload.type === "USER_DELETED") {
+            setNotifications((prev) => {
+              const resolved = prev.map((request) => {
+                if (
+                  request.type === "DELETE_REQUEST" &&
+                  request.status === "pending" &&
+                  request.userId === payload.userId
+                ) {
+                  return {
+                    ...request,
+                    status: "approved",
+                    read: true,
+                  };
+                }
+
+                return request;
+              });
+
+              const alreadyHasDeleteEvent = resolved.some(
+                (request) => request.type === "USER_DELETED" && request.reqId === payload.reqId
+              );
+
+              if (alreadyHasDeleteEvent) {
+                return resolved.slice(0, MAX_NOTIFICATIONS);
+              }
+
+              return [createUserDeletedNotification(payload), ...resolved].slice(0, MAX_NOTIFICATIONS);
+            });
+            fetchUsers();
+          }
+        } catch (error) {
+          console.error("Invalid admin notification payload", error);
+        }
+      });
+    };
+
+    client.onStompError = () => {
+      console.error("Admin notifications websocket reported an error");
+    };
+
+    client.activate();
+    stompClientRef.current = client;
+
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+        stompClientRef.current = null;
+      }
+    };
+  }, [fetchUsers]);
 
   useEffect(() => {
     const unresolvedPlaces = [...new Set(routes.flatMap((route) => [route?.source, route?.destination]).map((place) => normalizePlace(place)).filter((place) => place && !resolveCityKey(place) && !geoCityPoints[place]))];
@@ -473,8 +597,22 @@ export default function Dashboard() {
       await fetchUsers();
 
       if (fromRequest) {
-        setDeleteRequests((prevRequests) =>
-          prevRequests.filter((r) => r.userId !== userId)
+        setNotifications((prevNotifications) =>
+          prevNotifications.map((request) => {
+            if (
+              request.type === "DELETE_REQUEST" &&
+              request.status === "pending" &&
+              request.userId === userId
+            ) {
+              return {
+                ...request,
+                status: "approved",
+                read: true,
+              };
+            }
+
+            return request;
+          })
         );
         setNotifOpen(false);
       }
@@ -486,7 +624,34 @@ export default function Dashboard() {
   };
 
   const denyDeleteRequest = (reqId) => {
-    setDeleteRequests(deleteRequests.filter(r => r.reqId !== reqId));
+    setNotifications((prevNotifications) =>
+      prevNotifications.map((request) => {
+        if (request.reqId === reqId && request.type === "DELETE_REQUEST" && request.status === "pending") {
+          return {
+            ...request,
+            status: "denied",
+            read: true,
+          };
+        }
+
+        return request;
+      })
+    );
+  };
+
+  const markAllNotificationsAsRead = () => {
+    setNotifications((prevNotifications) =>
+      prevNotifications.map((request) => ({
+        ...request,
+        read: true,
+      }))
+    );
+  };
+
+  const clearNotificationHistory = () => {
+    setNotifications((prevNotifications) =>
+      prevNotifications.filter((request) => request.status === "pending")
+    );
   };
 
   const totalSeats = flights.reduce((a, f) => a + Number(f.seatingCapacity || 0), 0);
@@ -769,18 +934,21 @@ export default function Dashboard() {
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle Theme">{theme === 'light' ? '🌙' : '☀️'}</button>
           <button className="notif-bell" onClick={() => setNotifOpen(!notifOpen)}>
             🔔
-            {deleteRequests.length > 0 && (
-              <span className="notif-badge">{deleteRequests.length}</span>
+            {unreadNotificationsCount > 0 && (
+              <span className="notif-badge">{unreadNotificationsCount}</span>
             )}
           </button>
 
           <AdminNotificationsPanel
             notifOpen={notifOpen}
-            deleteRequests={deleteRequests}
+            notifications={notifications}
+            pendingCount={deleteRequests.length}
             users={users}
             getDisplayUserId={getDisplayUserId}
             confirmDeleteUser={confirmDeleteUser}
             denyDeleteRequest={denyDeleteRequest}
+            markAllNotificationsAsRead={markAllNotificationsAsRead}
+            clearNotificationHistory={clearNotificationHistory}
           />
         </div>
       </div>

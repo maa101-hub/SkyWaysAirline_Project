@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@stomp/stompjs": "^7.2.0",
     "axios": "^1.14.0",
     "html2pdf.js": "^0.14.0",
     "jwt-decode": "^4.0.0",
@@ -20,7 +21,8 @@
     "react-icons": "^5.6.0",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.13.2",
-    "react-toastify": "^11.0.5"
+    "react-toastify": "^11.0.5",
+    "sockjs-client": "^1.6.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
