@@ -47,6 +47,31 @@ export default function AdminUsersTab({
 
   const normalizedDeletedSearch = deletedSearchText.trim().toLowerCase();
 
+  const formatJoinedDate = (value) => {
+    if (!value) return "—";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "—";
+
+    return parsed.toLocaleString();
+  };
+
+  const renderDateTime = (value) => {
+    if (!value) return "—";
+
+    const formatted = formatJoinedDate(value);
+    if (formatted === "—") return "—";
+
+    const [datePart, timePart] = formatted.split(", ");
+
+    return (
+      <div>
+        <span>{datePart || "—"}</span>
+        <br />
+        <span>{timePart || "—"}</span>
+      </div>
+    );
+  };
+
   const filteredDeletedUsers = useMemo(() => {
     if (!normalizedDeletedSearch) return deletedUsers;
 
@@ -126,6 +151,7 @@ export default function AdminUsersTab({
               <th>Name</th>
               <th>Email</th>
               <th>Phone</th>
+              <th>Joined Date</th>
               <th>Booked Flights</th>
               <th>Actions</th>
             </tr>
@@ -133,14 +159,14 @@ export default function AdminUsersTab({
           <tbody>
             {customerUsers.length === 0 && (
               <tr>
-                <td colSpan="6" className="empty-row">
+                <td colSpan="7" className="empty-row">
                   No users found.
                 </td>
               </tr>
             )}
             {customerUsers.length > 0 && filteredUsers.length === 0 && (
               <tr>
-                <td colSpan="6" className="empty-row">
+                <td colSpan="7" className="empty-row">
                   No users match your search.
                 </td>
               </tr>
@@ -155,28 +181,55 @@ export default function AdminUsersTab({
                   .filter(Boolean)
                   .join(" ")
                   .trim();
+                const firstName =
+                  u.firstName ||
+                  String(u.name || "").trim().split(/\s+/).filter(Boolean)[0] ||
+                  "Unknown";
+                const surname =
+                  u.lastName ||
+                  String(u.name || "")
+                    .trim()
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .slice(1)
+                    .join(" ") ||
+                  "—";
                 const avatarInitial = (
                   u.firstName?.charAt(0) ||
                   u.lastName?.charAt(0) ||
                   u.name?.charAt(0) ||
                   "U"
                 ).toUpperCase();
+                const isUserActive =
+                  u?.status === 1 ||
+                  String(u?.status ?? "").trim() === "1" ||
+                  String(u?.status || "").toLowerCase() === "active";
                 return (
                   <tr
                     key={u.userId}
                     className={hasRequest ? "row-warning" : ""}
                   >
                     <td>
-                      <span className="id-badge">{displayUserId}</span>
+                      <div className="user-id-wrap">
+                        <span
+                          className={`user-status-dot ${
+                            isUserActive ? "active" : "inactive"
+                          }`}
+                          title={isUserActive ? "Active" : "Inactive"}
+                        />
+                        <span className="id-badge">{displayUserId}</span>
+                      </div>
                     </td>
                     <td>
                       <div className="user-cell">
                         <div className="user-mini-avatar">
                           {avatarInitial}
                         </div>
-                        <span>
-                          {fullName || u.name || "Unknown User"}
-                        </span>
+                        <div>
+                          <span>{firstName}</span>
+                          <br />
+                          <span>{surname}</span>
+                        </div>
                         {hasRequest && (
                           <span className="pending-tag">
                             Pending Delete
@@ -186,6 +239,7 @@ export default function AdminUsersTab({
                     </td>
                     <td>{u.email}</td>
                     <td>{u.phoneNumber}</td>
+                    <td>{renderDateTime(u.joinedAt || u.createdAt)}</td>
                     <td>
                       {bookingDetails.flights.length ? (
                         <div className="user-booking-tray-wrap">
@@ -327,15 +381,16 @@ export default function AdminUsersTab({
                     <th>Name</th>
                     <th>Email</th>
                     <th>Phone</th>
-                    <th>Bookings</th>
+                    <th>Joined Date</th>
                     <th>Deleted At</th>
+                    <th>Bookings</th>
                     <th>Deleted By</th>
                   </tr>
                 </thead>
                 <tbody>
                   {deletedUsers.length === 0 && (
                     <tr>
-                      <td colSpan="7" className="empty-row">
+                      <td colSpan="8" className="empty-row">
                         No deleted users yet.
                       </td>
                     </tr>
@@ -343,7 +398,7 @@ export default function AdminUsersTab({
 
                   {deletedUsers.length > 0 && filteredDeletedUsers.length === 0 && (
                     <tr>
-                      <td colSpan="7" className="empty-row">
+                      <td colSpan="8" className="empty-row">
                         No deleted users match your search.
                       </td>
                     </tr>
@@ -375,12 +430,13 @@ export default function AdminUsersTab({
                         </td>
                         <td>{deletedUser.email || "—"}</td>
                         <td>{deletedUser.phoneNumber || "—"}</td>
-                        <td>{deletedUser.totalOrders || 0}</td>
+                        <td>{formatJoinedDate(deletedUser.joinedAt || deletedUser.createdAt)}</td>
                         <td>
                           {deletedUser.deletedAt
                             ? new Date(deletedUser.deletedAt).toLocaleString()
                             : "—"}
                         </td>
+                        <td>{deletedUser.totalOrders || 0}</td>
                         <td>
                           <span className="deleted-by-pill">
                             {deletedUser.deletedBy || "Admin"}

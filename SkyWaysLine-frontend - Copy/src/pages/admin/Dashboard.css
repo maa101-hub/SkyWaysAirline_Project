@@ -196,6 +196,23 @@
   padding: 3px 10px; border-radius: 6px;
   font-size: 0.78rem; font-weight: 600; font-family: monospace;
 }
+.user-id-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.user-status-dot.active {
+  background: #2dbb64;
+}
+.user-status-dot.inactive {
+  background: #e05555;
+}
 .time-badge {
   background: rgba(240,165,0,0.12);
   border: 1px solid rgba(240,165,0,0.25);

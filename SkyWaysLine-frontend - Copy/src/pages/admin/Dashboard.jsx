@@ -603,6 +603,7 @@ export default function Dashboard() {
         name: deletedName || u.name || "Unknown User",
         email: u.email || "—",
         phoneNumber: u.phoneNumber || "—",
+        joinedAt: u.joinedAt || u.createdAt || null,
         deletedBy: u.deletedBy || "Admin",
         deletedAt: u.deletedAt || u.updatedAt || null,
         totalOrders: getUserBookingDetails(u.userId).totalOrders,

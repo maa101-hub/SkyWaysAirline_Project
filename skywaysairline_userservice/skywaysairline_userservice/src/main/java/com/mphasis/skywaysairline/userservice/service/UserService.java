@@ -80,6 +80,7 @@ public class UserService {
         credentials.setPassword(encodedPassword);
         credentials.setUserType("C");
         credentials.setLoginStatus(1);
+        credentials.setJoinedAt(LocalDateTime.now());
 
         credentials.setUserProfile(profile);
         profile.setCredentials(credentials);
@@ -101,6 +102,13 @@ public class UserService {
                     log.warn("User not found for email: {}", request.getEmail());
                     return new UserNotFoundException("User not found");
                 });
+        
+        //RK
+        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+            log.warn("Login blocked for deleted user: {}", request.getEmail());
+            throw new RuntimeException("Account deleted");
+        }
+        //-RK
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             log.warn("Invalid password for email: {}", request.getEmail());
@@ -142,6 +150,8 @@ public class UserService {
         response.setUserId(user.getUserId());
         response.setWallet(user.getUserProfile().getWallet());
         response.setStatus(user.getLoginStatus());
+        
+        response.setJoinedAt(user.getJoinedAt());
 
         log.info("Profile fetched successfully for email: {}", email);
 
@@ -197,12 +207,21 @@ public class UserService {
             res.setUserType(profile.getCredentials().getUserType());
             res.setWallet(profile.getWallet());
             res.setStatus(profile.getCredentials().getLoginStatus());
+            //RK
+            res.setJoinedAt(profile.getCredentials().getJoinedAt());
+            res.setIsDeleted(Boolean.TRUE.equals(profile.getCredentials().getIsDeleted()));
+            res.setDeletedAt(profile.getCredentials().getDeletedAt());
+            res.setDeletedBy(profile.getCredentials().getDeletedBy());
+            //-RK
 
             return res;
 
         }).toList();
     }
 
+
+    //RK
+    @Transactional
     public String deleteUser(String userId) {
 
         log.info("Delete user request for userId: {}", userId);
@@ -210,21 +229,23 @@ public class UserService {
         UserCredentials credentials = credentialsRepo.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (credentials.getUserType().equals("A")) {
+        if ("A".equals(credentials.getUserType())) {
             log.warn("Attempt to delete admin userId: {}", userId);
             throw new RuntimeException("Admin cannot be deleted");
         }
 
-        UserProfile profile = credentials.getUserProfile();
+        credentials.setIsDeleted(true);
+        credentials.setDeletedAt(LocalDateTime.now());
+        credentials.setDeletedBy("Admin");
+        credentials.setLoginStatus(0); // force logout/inactive
 
-        profileRepo.delete(profile);
-        credentialsRepo.delete(credentials);
+        credentialsRepo.save(credentials);
 
-        log.info("User deleted successfully for userId: {}", userId);
-
+        log.info("User soft-deleted successfully for userId: {}", userId);
         return "User deleted successfully";
     }
-
+    //-RK
+    
     public String update_status(String userId) {
 
         log.info("Logout request for userId: {}", userId);
@@ -259,7 +280,7 @@ public class UserService {
                     return new RuntimeException("Customer not found");
                 });
 
-        UserCredentials admin = credentialsRepo.findById("admin")
+        UserCredentials admin = credentialsRepo.findById("admin123")
                 .orElseThrow(() -> {
                     log.error("Admin account not found");
                     return new RuntimeException("Admin not found");
@@ -421,6 +442,12 @@ public class UserService {
                     log.warn("User not found after OTP verification for identifier: {}", request.getIdentifier());
                     return new RuntimeException("User not found");
                 });
+        //RK
+        if (Boolean.TRUE.equals(user.getIsDeleted())) {
+            log.warn("OTP login blocked for deleted user: {}", request.getIdentifier());
+            throw new RuntimeException("Account deleted");
+        }
+        //-RK
 
         String email = user.getUserProfile().getEmail();
         String role = user.getUserType();
