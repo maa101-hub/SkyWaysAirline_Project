@@ -753,6 +753,107 @@
 }
 .pf-save-btn:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
 .pf-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.pf-delete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 260;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 12, 30, 0.72);
+  backdrop-filter: blur(4px);
+  padding: 18px;
+}
+
+.pf-delete-dialog {
+  width: 100%;
+  max-width: 460px;
+  background: #141b3a;
+  border: 1px solid rgba(79,163,227,0.24);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.45);
+  padding: 20px;
+}
+
+.pf-delete-title {
+  font-family: 'Playfair Display', serif;
+  color: #e8eaf6;
+  font-size: 1.2rem;
+  margin-bottom: 6px;
+}
+
+.pf-delete-msg {
+  color: #f0a500;
+  font-size: 0.94rem;
+  margin-bottom: 12px;
+}
+
+.pf-delete-textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 110px;
+  background: rgba(255,255,255,0.05);
+  border: 1.5px solid rgba(79,163,227,0.2);
+  border-radius: 12px;
+  padding: 12px;
+  color: #e8eaf6;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  outline: none;
+}
+
+.pf-delete-textarea:focus {
+  border-color: #4fa3e3;
+  background: rgba(79,163,227,0.08);
+}
+
+.pf-delete-textarea::placeholder {
+  color: rgba(123,132,176,0.7);
+}
+
+.pf-delete-meta {
+  margin-top: 6px;
+  font-size: 0.74rem;
+  color: #7b84b0;
+  text-align: right;
+}
+
+.pf-delete-error {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #ff9b9b;
+}
+
+.pf-delete-actions {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.pf-delete-send-btn {
+  background: linear-gradient(135deg, #f0a500 0%, #c98300 100%);
+  border: none;
+  border-radius: 10px;
+  color: #111;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.pf-delete-send-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.pf-delete-send-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
  
 /* Clickable user badge */
 .user-badge {
@@ -771,6 +872,13 @@
   .pf-edit-grid    { grid-template-columns: 1fr; }
   .pf-view-field.full,
   .pf-edit-field.pf-full { grid-column: auto; }
+  .pf-delete-actions {
+    flex-direction: column;
+  }
+  .pf-delete-actions .pf-cancel-btn,
+  .pf-delete-send-btn {
+    width: 100%;
+  }
 }
 .error {
   color: red;

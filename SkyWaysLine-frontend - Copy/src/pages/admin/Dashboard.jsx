@@ -3,6 +3,8 @@ import "./Dashboard.css";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { useNavigate } from "react-router-dom";
+import { Client } from "@stomp/stompjs";
+import SockJS from "sockjs-client/dist/sockjs";
 import { flightAPI, getUsers, deleteUser, getAllBookings } from "../../api";
 import { AuthContext } from "../../context/AuthContext";
 import { toast } from "react-toastify";
@@ -173,11 +175,8 @@ const resolveCityKey = (placeName) => {
   return matchedAlias ? CITY_ALIASES[matchedAlias] : null;
 };
 
-const MOCK_DELETE_REQUESTS = [
-  { reqId:"REQ-001", userId:"USR-003", name:"Amit Kumar",  email:"amit@email.com",  requestedAt:"2024-06-10 09:30", reason:"No longer needed" },
-  { reqId:"REQ-002", userId:"USR-005", name:"Vikram Joshi", email:"vikram@email.com", requestedAt:"2024-06-11 14:15", reason:"Privacy concerns" },
-];
 const AUTH_EVENT_KEY = "skyways_auth_event";
+const WS_NOTIFICATION_URL = "http://localhost:8082/ws-notifications";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -205,7 +204,7 @@ export default function Dashboard() {
 
   const [users, setUsers]                   = useState([]);
   const [bookings, setBookings]             = useState([]);
-  const [deleteRequests, setDeleteRequests] = useState(MOCK_DELETE_REQUESTS);
+  const [deleteRequests, setDeleteRequests] = useState([]);
   const [notifOpen, setNotifOpen]           = useState(false);
   const [userDelConfirm, setUserDelConfirm] = useState(null); // { userId, name, fromRequest }
   const [expandedUserBookings, setExpandedUserBookings] = useState(null);
@@ -214,6 +213,7 @@ export default function Dashboard() {
   const [lineDashOffset, setLineDashOffset] = useState(0);
   const [selectedRouteOnMap, setSelectedRouteOnMap] = useState(null);
   const notifRef = useRef(null);
+  const stompClientRef = useRef(null);
   const { profile } = useContext(AuthContext);
   const wallet = profile?.wallet ?? 0;
 
@@ -336,6 +336,65 @@ export default function Dashboard() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  useEffect(() => {
+    const client = new Client({
+      webSocketFactory: () => new SockJS(WS_NOTIFICATION_URL),
+      reconnectDelay: 5000,
+      debug: () => {},
+    });
+
+    client.onConnect = () => {
+      client.subscribe("/topic/admin/notifications", (frame) => {
+        try {
+          const payload = JSON.parse(frame.body || "{}");
+
+          if (payload.type === "DELETE_REQUEST") {
+            setDeleteRequests((prev) => {
+              const alreadyExists = prev.some(
+                (request) => request.reqId === payload.reqId || request.userId === payload.userId
+              );
+              if (alreadyExists) return prev;
+
+              return [
+                {
+                  reqId: payload.reqId,
+                  userId: payload.userId,
+                  name: payload.name || "Unknown User",
+                  email: payload.email || "—",
+                  requestedAt: payload.requestedAt || new Date().toISOString(),
+                  reason: payload.reason || "",
+                },
+                ...prev,
+              ];
+            });
+            return;
+          }
+
+          if (payload.type === "USER_DELETED") {
+            setDeleteRequests((prev) => prev.filter((request) => request.userId !== payload.userId));
+            fetchUsers();
+          }
+        } catch (error) {
+          console.error("Invalid admin notification payload", error);
+        }
+      });
+    };
+
+    client.onStompError = () => {
+      console.error("Admin notifications websocket reported an error");
+    };
+
+    client.activate();
+    stompClientRef.current = client;
+
+    return () => {
+      if (stompClientRef.current) {
+        stompClientRef.current.deactivate();
+        stompClientRef.current = null;
+      }
+    };
+  }, [fetchUsers]);
 
   useEffect(() => {
     const unresolvedPlaces = [...new Set(routes.flatMap((route) => [route?.source, route?.destination]).map((place) => normalizePlace(place)).filter((place) => place && !resolveCityKey(place) && !geoCityPoints[place]))];

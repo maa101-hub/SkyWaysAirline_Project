@@ -41,3 +41,6 @@ export { API, flightAPI, bookingAPI };
 //RK
 export const deleteUser = (userId) =>
   API.delete(`/api/users/${userId}`);
+
+export const submitDeleteRequestEvent = (payload) =>
+  API.post("/api/users/delete-request", payload);
