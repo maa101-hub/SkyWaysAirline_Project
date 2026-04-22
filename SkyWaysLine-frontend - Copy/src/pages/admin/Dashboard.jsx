@@ -59,6 +59,27 @@ const formatDobForUserId = (dobValue) => {
   return `${year}${day}${month}`;
 };
 
+const normalizeUserStatus = (statusValue) => {
+  const raw = String(statusValue ?? "").trim().toLowerCase();
+  const isInactive =
+    statusValue === 0 ||
+    raw === "0" ||
+    raw === "inactive" ||
+    raw === "deleted" ||
+    raw === "disabled" ||
+    raw === "false";
+
+  return isInactive ? "inactive" : "active";
+};
+
+const isExplicitlyDeletedUser = (user) => {
+  const rawStatus = String(user?.rawStatus ?? user?.status ?? "")
+    .trim()
+    .toLowerCase();
+
+  return user?.isDeleted === true || rawStatus === "deleted";
+};
+
 const getDisplayUserId = (user) => {
   if (!user) return "—";
 
@@ -156,7 +177,6 @@ const MOCK_DELETE_REQUESTS = [
   { reqId:"REQ-001", userId:"USR-003", name:"Amit Kumar",  email:"amit@email.com",  requestedAt:"2024-06-10 09:30", reason:"No longer needed" },
   { reqId:"REQ-002", userId:"USR-005", name:"Vikram Joshi", email:"vikram@email.com", requestedAt:"2024-06-11 14:15", reason:"Privacy concerns" },
 ];
-const DELETED_USERS_STORAGE_KEY = "skyways_admin_deleted_users";
 const AUTH_EVENT_KEY = "skyways_auth_event";
 
 export default function Dashboard() {
@@ -184,7 +204,6 @@ export default function Dashboard() {
   const [scheduleDel, setScheduleDel]     = useState(null);
 
   const [users, setUsers]                   = useState([]);
-  const [deletedUsers, setDeletedUsers]     = useState([]);
   const [bookings, setBookings]             = useState([]);
   const [deleteRequests, setDeleteRequests] = useState(MOCK_DELETE_REQUESTS);
   const [notifOpen, setNotifOpen]           = useState(false);
@@ -221,10 +240,8 @@ export default function Dashboard() {
       const nextUsers = Array.isArray(res.data)
         ? res.data.map((u) => ({
             ...u,
-            status:
-              u?.status === 1 || String(u?.status ?? "").trim() === "1" || String(u?.status || "").toLowerCase() === "active"
-                ? "active"
-                : "inactive",
+            rawStatus: u?.status,
+            status: normalizeUserStatus(u?.status),
           }))
         : [];
 
@@ -309,31 +326,6 @@ export default function Dashboard() {
       window.removeEventListener("focus", fetchUsers);
     };
   }, [fetchUsers]);
-
-  useEffect(() => {
-    try {
-      const savedDeletedUsers = localStorage.getItem(DELETED_USERS_STORAGE_KEY);
-      if (!savedDeletedUsers) return;
-
-      const parsedDeletedUsers = JSON.parse(savedDeletedUsers);
-      if (Array.isArray(parsedDeletedUsers)) {
-        setDeletedUsers(parsedDeletedUsers);
-      }
-    } catch (error) {
-      console.error("Error reading deleted users history:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        DELETED_USERS_STORAGE_KEY,
-        JSON.stringify(deletedUsers)
-      );
-    } catch (error) {
-      console.error("Error saving deleted users history:", error);
-    }
-  }, [deletedUsers]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -475,32 +467,10 @@ export default function Dashboard() {
 
   const executeDeleteUser = async () => {
     const { userId, fromRequest } = userDelConfirm;
-    const deletedUser = users.find((u) => u.userId === userId);
-    const deletedBookingDetails = getUserBookingDetails(userId);
+
     try {
       await deleteUser(userId);
-      setUsers((prevUsers) => prevUsers.filter((u) => u.userId !== userId));
-
-      if (deletedUser) {
-        const deletedName = [deletedUser.firstName, deletedUser.lastName]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-
-        setDeletedUsers((prevDeleted) => [
-          {
-            userId: deletedUser.userId,
-            displayUserId: getDisplayUserId(deletedUser),
-            name: deletedName || deletedUser.name || "Unknown User",
-            email: deletedUser.email || "—",
-            phoneNumber: deletedUser.phoneNumber || "—",
-            deletedBy: fromRequest ? "Delete Request" : "Admin",
-            deletedAt: new Date().toISOString(),
-            totalOrders: deletedBookingDetails.totalOrders,
-          },
-          ...prevDeleted.filter((entry) => entry.userId !== deletedUser.userId),
-        ]);
-      }
+      await fetchUsers();
 
       if (fromRequest) {
         setDeleteRequests((prevRequests) =>
@@ -619,6 +589,25 @@ export default function Dashboard() {
       flights: Object.values(groupedFlights),
     };
   };
+
+  const customerUsers = users.filter((u) => u.userType !== "A");
+  const registeredUsers = customerUsers.filter((u) => !isExplicitlyDeletedUser(u));
+  const deletedUsers = customerUsers
+    .filter((u) => isExplicitlyDeletedUser(u))
+    .map((u) => {
+      const deletedName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+
+      return {
+        userId: u.userId,
+        displayUserId: getDisplayUserId(u),
+        name: deletedName || u.name || "Unknown User",
+        email: u.email || "—",
+        phoneNumber: u.phoneNumber || "—",
+        deletedBy: u.deletedBy || "Admin",
+        deletedAt: u.deletedAt || u.updatedAt || null,
+        totalOrders: getUserBookingDetails(u.userId).totalOrders,
+      };
+    });
 
   const getMapPointForPlace = (placeName) => {
     const cityKey = resolveCityKey(placeName);
@@ -863,7 +852,7 @@ export default function Dashboard() {
 
         {tab === "users" && (
           <AdminUsersTab
-            users={users}
+            users={registeredUsers}
             deletedUsers={deletedUsers}
             deleteRequests={deleteRequests}
             expandedUserBookings={expandedUserBookings}
