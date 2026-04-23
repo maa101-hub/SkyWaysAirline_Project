@@ -305,7 +305,8 @@ public class UserService {
                     return new RuntimeException("Customer not found");
                 });
 
-        UserCredentials admin = credentialsRepo.findById("admin")
+        UserCredentials admin = credentialsRepo.findById("admin123")
+                .or(() -> credentialsRepo.findById("admin"))
                 .orElseThrow(() -> {
                     log.error("Admin account not found");
                     return new RuntimeException("Admin not found");
