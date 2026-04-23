@@ -141,11 +141,11 @@ export default function Home() {
       setForm((prev) => ({ ...prev, from: trimmedFrom, to: trimmedTo }));
 
       const res = await axios.get("http://localhost:8089/api/flights/searchByRoute", {
-        params: { source: trimmedFrom, destination: trimmedTo },
+        params: { source: trimmedFrom, destination: trimmedTo, journeyDate: form.date },
       });
 
       const flights = Array.isArray(res.data) ? res.data : [];
-      setResults(flights.filter((flight) => isFlightAvailableOnDate(flight, form.date)));
+      setResults(flights);
       setSearched(true);
     } catch (err) {
       console.error(err);

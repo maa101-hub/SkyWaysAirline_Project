@@ -386,6 +386,55 @@ public class UserService {
         return "Wallet updated successfully";
     }
 
+        @Transactional
+        public String refundMoney(String userId, Double amount) {
+
+        log.info("Refund transfer started. UserId: {}, Amount: {}", userId, amount);
+
+        if (userId == null || userId.isBlank() || amount == null || amount <= 0) {
+            log.error("Invalid refund request. UserId: {}, Amount: {}", userId, amount);
+            throw new IllegalArgumentException("Invalid refund request");
+        }
+
+        UserCredentials user = credentialsRepo.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        UserCredentials admin = credentialsRepo.findById("admin123")
+            .or(() -> credentialsRepo.findById("admin"))
+            .orElseThrow(() -> new RuntimeException("Admin not found"));
+
+        Double userWallet = user.getUserProfile().getWallet() != null
+            ? user.getUserProfile().getWallet()
+            : 0.0;
+
+        Double adminWallet = admin.getUserProfile().getWallet() != null
+            ? admin.getUserProfile().getWallet()
+            : 0.0;
+
+        if (adminWallet < amount) {
+            log.error("Refund failed due to insufficient admin wallet balance. AdminBalance: {}, RefundAmount: {}",
+                adminWallet,
+                amount);
+            throw new RuntimeException("Insufficient admin wallet balance for refund");
+        }
+
+        admin.getUserProfile().setWallet(adminWallet - amount);
+        user.getUserProfile().setWallet(userWallet + amount);
+
+        credentialsRepo.save(user);
+        credentialsRepo.save(admin);
+        profileRepo.save(user.getUserProfile());
+        profileRepo.save(admin.getUserProfile());
+
+        log.info("Refund transfer completed. UserId: {}, Amount: {}, UserWallet: {}, AdminWallet: {}",
+            userId,
+            amount,
+            user.getUserProfile().getWallet(),
+            admin.getUserProfile().getWallet());
+
+        return "Refund processed successfully";
+        }
+
     public String getUserIdByEmail(String email) {
 
         log.info("Fetching userId for email: {}", email);

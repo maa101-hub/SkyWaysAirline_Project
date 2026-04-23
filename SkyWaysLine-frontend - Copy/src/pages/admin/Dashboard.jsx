@@ -216,6 +216,24 @@ const createUserDeletedNotification = (payload) => ({
   read: false,
 });
 
+const createSeatUpdateNotification = (payload) => ({
+  reqId: payload.reqId || `SEAT-${Date.now()}`,
+  type: "SEAT_UPDATE",
+  status: "info",
+  read: false,
+  action: payload.action || "UPDATED",
+  flightId: payload.flightId || "—",
+  scheduleId: payload.scheduleId || "—",
+  journeyDate: payload.journeyDate || "—",
+  totalSeats: Number(payload.totalSeats || 0),
+  availableSeats: Number(payload.availableSeats || 0),
+  bookedSeats: Number(payload.bookedSeats || 0),
+  requestedAt: payload.requestedAt || new Date().toISOString(),
+  name: payload.flightId || "Flight",
+  email: "—",
+  reason: "",
+});
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
@@ -250,6 +268,9 @@ export default function Dashboard() {
   const [mapNow, setMapNow]                 = useState(Date.now());
   const [lineDashOffset, setLineDashOffset] = useState(0);
   const [selectedRouteOnMap, setSelectedRouteOnMap] = useState(null);
+  const [seatInspector, setSeatInspector] = useState({ scheduleId: "", journeyDate: "" });
+  const [seatStatus, setSeatStatus] = useState(null);
+  const [seatStatusLoading, setSeatStatusLoading] = useState(false);
   const notifRef = useRef(null);
   const stompClientRef = useRef(null);
   const { profile } = useContext(AuthContext);
@@ -275,6 +296,28 @@ export default function Dashboard() {
       setBookings([]);
     }
   }, []);
+
+  const loadSeatStatus = useCallback(async () => {
+    if (!seatInspector.scheduleId || !seatInspector.journeyDate) {
+      alert("Please select schedule and date");
+      return;
+    }
+
+    try {
+      setSeatStatusLoading(true);
+      const res = await flightAPI.get(
+        `/api/flights/seat-status/${seatInspector.scheduleId}`,
+        { params: { journeyDate: seatInspector.journeyDate } }
+      );
+      setSeatStatus(res.data);
+    } catch (error) {
+      console.error("Failed to load seat status", error);
+      setSeatStatus(null);
+      alert("Seat status load nahi hua");
+    } finally {
+      setSeatStatusLoading(false);
+    }
+  }, [seatInspector]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -439,6 +482,20 @@ export default function Dashboard() {
               return [createUserDeletedNotification(payload), ...resolved].slice(0, MAX_NOTIFICATIONS);
             });
             fetchUsers();
+            return;
+          }
+
+          if (payload.type === "SEAT_UPDATE") {
+            setNotifications((prev) => {
+              const alreadyExists = prev.some((request) => request.reqId === payload.reqId);
+              if (alreadyExists) return prev;
+
+              return [createSeatUpdateNotification(payload), ...prev].slice(0, MAX_NOTIFICATIONS);
+            });
+            toast.info(
+              `Seat ${String(payload.action || "updated").toLowerCase()} · ${payload.scheduleId} · ${payload.journeyDate}`
+            );
+            return;
           }
         } catch (error) {
           console.error("Invalid admin notification payload", error);
@@ -656,6 +713,8 @@ export default function Dashboard() {
 
   const totalSeats = flights.reduce((a, f) => a + Number(f.seatingCapacity || 0), 0);
 
+  const activeBookings = bookings.filter((booking) => booking.bookingStatus !== 0);
+
   const bookingRows = flights.map((flight) => {
     const totalFlightSeats = Number(flight.seatingCapacity || 0);
     const relatedSchedules = schedules.filter((schedule) => schedule.flightId === flight.flightId);
@@ -664,7 +723,7 @@ export default function Dashboard() {
     const matchingRoutes = routeIds
       .map((routeId) => routes.find((route) => route.routeId === routeId))
       .filter(Boolean);
-    const flightBookings = bookings.filter((booking) => {
+    const flightBookings = activeBookings.filter((booking) => {
       const bookingFlightId = booking.flightId || booking.flightNumber || booking.flightNo;
       const bookingScheduleId = booking.scheduleId || booking.scheduleNo;
 
@@ -688,7 +747,7 @@ export default function Dashboard() {
     const occupancy = totalFlightSeats ? Math.min((bookedSeats / totalFlightSeats) * 100, 100) : 0;
     const routeDetails = matchingRoutes.length
       ? matchingRoutes.map((route) => {
-          const routeOrders = bookings.filter((booking) => {
+          const routeOrders = activeBookings.filter((booking) => {
             const bookingScheduleId = booking.scheduleId || booking.scheduleNo;
             if (!bookingScheduleId) return false;
 
@@ -1005,6 +1064,11 @@ export default function Dashboard() {
             onAdd={() => openAdd("schedules")}
             onEdit={editSchedule}
             onDelete={setScheduleDel}
+            seatInspector={seatInspector}
+            seatStatus={seatStatus}
+            seatStatusLoading={seatStatusLoading}
+            setSeatInspector={setSeatInspector}
+            loadSeatStatus={loadSeatStatus}
           />
         )}
 

@@ -52,4 +52,28 @@ public class AdminNotificationPublisher {
 
         messagingTemplate.convertAndSend("/topic/admin/notifications", message);
     }
+
+    public void publishSeatUpdate(
+            String action,
+            String flightId,
+            String scheduleId,
+            String journeyDate,
+            int totalSeats,
+            int availableSeats,
+            int bookedSeats) {
+
+        AdminNotificationMessage message = new AdminNotificationMessage();
+        message.setType("SEAT_UPDATE");
+        message.setReqId("SEAT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+        message.setAction(action);
+        message.setFlightId(flightId);
+        message.setScheduleId(scheduleId);
+        message.setJourneyDate(journeyDate);
+        message.setTotalSeats(totalSeats);
+        message.setAvailableSeats(availableSeats);
+        message.setBookedSeats(bookedSeats);
+        message.setRequestedAt(LocalDateTime.now().format(FORMATTER));
+
+        messagingTemplate.convertAndSend("/topic/admin/notifications", message);
+    }
 }

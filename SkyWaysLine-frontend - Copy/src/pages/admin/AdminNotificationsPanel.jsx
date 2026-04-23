@@ -45,16 +45,26 @@ export default function AdminNotificationsPanel({
             ? "Approved"
             : req.status === "denied"
               ? "Denied"
+              : req.type === "SEAT_UPDATE"
+                ? (req.action || "Updated")
               : req.type === "USER_DELETED"
                 ? "Deleted"
                 : "Pending";
 
+        const seatMessage = req.type === "SEAT_UPDATE"
+          ? `${req.action || "Updated"} · Flight ${req.flightId} · Schedule ${req.scheduleId} · ${req.journeyDate} · Booked ${req.bookedSeats} / ${req.totalSeats}`
+          : null;
+
         return (
           <div key={`${req.type}-${req.reqId}`} className={`notif-item ${req.read ? "" : "notif-unread"}`}>
-            <div className="notif-avatar">{req.name.charAt(0)}</div>
+            <div className="notif-avatar">{(req.name || req.flightId || "F").charAt(0)}</div>
             <div className="notif-info">
               <p className="notif-msg">
-                {req.type === "USER_DELETED" ? (
+                {req.type === "SEAT_UPDATE" ? (
+                  <>
+                    <strong>{req.flightId}</strong> seat data updated
+                  </>
+                ) : req.type === "USER_DELETED" ? (
                   <>
                     <strong>{req.name}</strong> account deleted successfully
                   </>
@@ -67,6 +77,7 @@ export default function AdminNotificationsPanel({
               <p className="notif-meta">
                 {displayUserId} · {req.requestedAt}
               </p>
+              {seatMessage && <p className="notif-reason">{seatMessage}</p>}
               <p className={`notif-state notif-state-${req.status || "pending"}`}>{statusLabel}</p>
               {req.reason && <p className="notif-reason">"{req.reason}"</p>}
               {isPendingDeleteRequest && (

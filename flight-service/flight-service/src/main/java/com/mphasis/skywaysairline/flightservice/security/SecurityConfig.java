@@ -6,12 +6,18 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableMethodSecurity
@@ -45,12 +51,17 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         // PUBLIC APIs
                         .requestMatchers(
                                 "/api/flights/searchByName",
                                 "/api/flights/searchByRoute",
                                 "/api/flights/details/**",
-                                "/api/flights/updateSeats/**"
+                                "/api/flights/updateSeats/**",
+                                "/api/flights/updateSeatsForDate/**",
+                                "/api/flights/releaseSeatsForDate/**",
+                                "/api/flights/completeJourney/**"
                         ).permitAll()
 
                         // ADMIN ONLY
@@ -71,7 +82,7 @@ public class SecurityConfig {
                 );
 
         log.info(
-                "Public endpoints configured for search and details APIs"
+                "Public endpoints configured for search, details, and seat-sync APIs"
         );
 
         log.info(
@@ -93,4 +104,18 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+        @Bean
+        public CorsConfigurationSource corsConfigurationSource() {
+                CorsConfiguration configuration = new CorsConfiguration();
+                configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
+                configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "Origin"));
+                configuration.setExposedHeaders(Arrays.asList("Authorization"));
+                configuration.setAllowCredentials(true);
+
+                UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
+        }
 }

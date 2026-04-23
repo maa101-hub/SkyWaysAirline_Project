@@ -54,6 +54,7 @@ public class SecurityConfig {
                                 "/api/users/wallet",
                                 "/api/users/id-by-email",
                                 "/api/users/wallet/add",
+                                "/api/users/admin/notifications/**",
                                 "/ws-notifications/**"
                         ).permitAll()
 

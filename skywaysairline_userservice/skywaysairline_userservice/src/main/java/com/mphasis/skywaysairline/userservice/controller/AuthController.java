@@ -178,6 +178,37 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/wallet/refund")
+    public ResponseEntity<String> refundWalletMoney(
+            @RequestParam String userId,
+            @RequestParam Double amount) {
+
+        log.info(
+                "Wallet refund API called. UserId: {}, Amount: {}",
+                userId,
+                amount
+        );
+
+        try {
+            String result =
+                    userService.refundMoney(userId, amount);
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+
+            log.error(
+                    "Wallet refund failed for userId: {} Reason: {}",
+                    userId,
+                    e.getMessage(),
+                    e
+            );
+
+            return ResponseEntity.badRequest()
+                    .body("Failed to refund wallet money: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/id-by-email")
     public ResponseEntity<String> getUserIdByEmail(
             @RequestParam String email) {

@@ -119,6 +119,55 @@ public class UserClient {
         }
     }
 
+    // ✅ Wallet Refund (Admin -> User)
+    @CircuitBreaker(
+            name = "userService",
+            fallbackMethod = "refundMoneyFallback"
+    )
+    public String refundMoney(
+            String userId,
+            Double amount) {
+
+        String url =
+                "http://localhost:8082/api/users/wallet/refund"
+                        + "?userId=" + userId
+                        + "&amount=" + amount;
+
+        try {
+
+            log.info(
+                    "Calling User Service for wallet refund. UserId: {}, Amount: {}",
+                    userId,
+                    amount
+            );
+
+            ResponseEntity<String> response =
+                    restTemplate.exchange(
+                            url,
+                            HttpMethod.POST,
+                            null,
+                            String.class
+                    );
+
+            log.info(
+                    "Wallet refund successful for UserId: {}",
+                    userId
+            );
+
+            return response.getBody();
+
+        } catch (Exception e) {
+
+            log.error(
+                    "Wallet refund failed for UserId: {}",
+                    userId,
+                    e
+            );
+
+            throw e;
+        }
+    }
+
     // ✅ Get UserId
     @CircuitBreaker(
             name = "userService",
@@ -197,6 +246,20 @@ public class UserClient {
 
         return "User Service unavailable for wallet top-up";
     }
+
+        public String refundMoneyFallback(
+                        String userId,
+                        Double amount,
+                        Exception ex) {
+
+                log.error(
+                                "Fallback triggered for wallet refund. UserId: {}",
+                                userId,
+                                ex
+                );
+
+                return "User Service unavailable for wallet refund";
+        }
 
     public String getUserIdFallback(
             String email,

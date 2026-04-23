@@ -13,11 +13,12 @@ import org.springframework.web.bind.annotation.*;
 import com.mphasis.skywaysairline.flightservice.dto.FlightRequest;
 import com.mphasis.skywaysairline.flightservice.dto.FlightResponse;
 import com.mphasis.skywaysairline.flightservice.dto.FlightSearchRequest;
+import com.mphasis.skywaysairline.flightservice.dto.SeatStatusResponse;
 import com.mphasis.skywaysairline.flightservice.response.ApiResponse;
 import com.mphasis.skywaysairline.flightservice.service.FlightService;
 
 import jakarta.validation.Valid;
-
+import java.time.LocalDate;
 @CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/api/flights")
@@ -112,7 +113,8 @@ public class FlightController {
     @GetMapping("/searchByRoute")
     public List<FlightSearchRequest> searchByRoute(
             @RequestParam String source,
-            @RequestParam String destination) {
+            @RequestParam String destination,
+            @RequestParam(required = false) LocalDate journeyDate) {
 
         log.info(
                 "Search By Route API called. Source: {}, Destination: {}",
@@ -121,7 +123,7 @@ public class FlightController {
         );
 
         List<FlightSearchRequest> result =
-                service.searchFlights(source, destination);
+                service.searchFlights(source, destination, journeyDate);
 
         log.info(
                 "Route search completed. Source: {}, Destination: {}, Results: {}",
@@ -136,17 +138,32 @@ public class FlightController {
     // ✅ DETAILS
     @GetMapping("/details/{scheduleId}")
     public ResponseEntity<FlightResponse> getDetails(
-            @PathVariable String scheduleId) {
+            @PathVariable String scheduleId,
+            @RequestParam(required = false) LocalDate journeyDate) {
 
         log.info("Get Flight Details API called for scheduleId: {}", scheduleId);
 
         FlightResponse response =
-                service.getFlightDetails(scheduleId);
+                service.getFlightDetails(scheduleId, journeyDate);
 
         log.info("Flight details fetched successfully for scheduleId: {}", scheduleId);
 
         return ResponseEntity.ok(response);
     }
+
+        // ✅ SEAT STATUS BY SCHEDULE + DATE
+        @GetMapping("/seat-status/{scheduleId}")
+        @PreAuthorize("hasRole('ADMIN')")
+        public ResponseEntity<SeatStatusResponse> getSeatStatus(
+                        @PathVariable String scheduleId,
+                        @RequestParam LocalDate journeyDate) {
+
+                log.info("Get Seat Status API called for scheduleId: {}, journeyDate: {}", scheduleId, journeyDate);
+
+                SeatStatusResponse response = service.getSeatStatus(scheduleId, journeyDate);
+
+                return ResponseEntity.ok(response);
+        }
 
     // ✅ UPDATE SEATS
     @PutMapping("/updateSeats/{scheduleId}")
@@ -169,5 +186,108 @@ public class FlightController {
         );
 
         return ResponseEntity.ok("Seats updated successfully");
+    }
+
+        // ✅ UPDATE SEATS FOR SPECIFIC DATE (NEW - Daily Tracking)
+    @PutMapping("/updateSeatsForDate/{scheduleId}")
+    public ResponseEntity<String> updateSeatsForDate(
+            @PathVariable String scheduleId,
+            @RequestParam LocalDate journeyDate,
+            @RequestParam int seatsBooked) {
+
+        log.info(
+                "Update Seats For Date API called. ScheduleId: {}, JourneyDate: {}, SeatsBooked: {}",
+                scheduleId,
+                journeyDate,
+                seatsBooked
+        );
+
+        service.updateSeatsForDate(scheduleId, journeyDate, seatsBooked);
+
+        log.info(
+                "Seats updated for date successfully. ScheduleId: {}, JourneyDate: {}, SeatsBooked: {}",
+                scheduleId,
+                journeyDate,
+                seatsBooked
+        );
+
+        return ResponseEntity.ok("Seats updated successfully for the selected date");
+    }
+
+    // ✅ RELEASE SEATS FOR SPECIFIC DATE (for cancellation)
+    @PutMapping("/releaseSeatsForDate/{scheduleId}")
+    public ResponseEntity<String> releaseSeatsForDate(
+            @PathVariable String scheduleId,
+            @RequestParam LocalDate journeyDate,
+            @RequestParam int seatsToRelease) {
+
+        log.info(
+                "Release Seats For Date API called. ScheduleId: {}, JourneyDate: {}, SeatsReleased: {}",
+                scheduleId,
+                journeyDate,
+                seatsToRelease
+        );
+
+        service.releaseSeatsForDate(scheduleId, journeyDate, seatsToRelease);
+
+        log.info(
+                "Seats released for date successfully. ScheduleId: {}, JourneyDate: {}, SeatsReleased: {}",
+                scheduleId,
+                journeyDate,
+                seatsToRelease
+        );
+
+        return ResponseEntity.ok("Seats released successfully for the selected date");
+    }
+
+    // ✅ COMPLETE JOURNEY - Mark journey complete and restore all seats
+        @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/completeJourney/{scheduleId}")
+    public ResponseEntity<String> completeJourney(
+            @PathVariable String scheduleId,
+            @RequestParam LocalDate journeyDate) {
+
+        log.info(
+                "Complete Journey API called. ScheduleId: {}, JourneyDate: {}",
+                scheduleId,
+                journeyDate
+        );
+
+        service.completeJourney(scheduleId, journeyDate);
+
+        log.info(
+                "Journey completed and seats restored. ScheduleId: {}, JourneyDate: {}",
+                scheduleId,
+                journeyDate
+        );
+
+        return ResponseEntity.ok("Journey completed. All seats restored for the selected date");
+    }
+
+    // ✅ INITIALIZE SCHEDULE DETAILS for a date range
+    @PostMapping("/initializeScheduleDetails/{scheduleId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<String> initializeScheduleDetails(
+            @PathVariable String scheduleId,
+            @RequestParam LocalDate startDate,
+            @RequestParam LocalDate endDate) {
+
+        log.info(
+                "Initialize Schedule Details API called. ScheduleId: {}, StartDate: {}, EndDate: {}",
+                scheduleId,
+                startDate,
+                endDate
+        );
+
+        service.initializeScheduleDetails(scheduleId, startDate, endDate);
+
+        log.info(
+                "Schedule details initialized successfully. ScheduleId: {}, StartDate: {}, EndDate: {}",
+                scheduleId,
+                startDate,
+                endDate
+        );
+
+        return ResponseEntity.ok("Schedule details initialized successfully");
     }
 }

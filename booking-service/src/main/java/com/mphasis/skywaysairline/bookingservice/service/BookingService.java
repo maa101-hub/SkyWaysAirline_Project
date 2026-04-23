@@ -54,7 +54,7 @@ public class BookingService {
                 throw new IllegalArgumentException("Invalid scheduleId or noOfSeats");
             }
 
-            FlightResponse flight = flightClient.getFlightDetails(req.getScheduleId());
+            FlightResponse flight = flightClient.getFlightDetails(req.getScheduleId(), req.getJourneyDate());
 
             if (flight == null) {
                 log.error("Flight not found for scheduleId: {}", req.getScheduleId());
@@ -181,8 +181,9 @@ public class BookingService {
 
         log.info("Passengers saved successfully");
 
-        flightClient.updateSeats(
+            flightClient.updateSeatsForDate(
                 bookingReq.getScheduleId(),
+                bookingReq.getJourneyDate(),
                 bookingReq.getNoOfSeats()
         );
 
@@ -283,7 +284,10 @@ public class BookingService {
             throw new IllegalArgumentException("Invalid booking details");
         }
 
-        FlightResponse flight = flightClient.getFlightDetails(bookingReq.getScheduleId());
+        FlightResponse flight = flightClient.getFlightDetails(
+            bookingReq.getScheduleId(),
+            bookingReq.getJourneyDate()
+        );
 
         if (flight == null) {
             log.error("Flight not found for scheduleId: {}", bookingReq.getScheduleId());
@@ -355,7 +359,11 @@ public class BookingService {
         log.info("All passengers saved successfully. ReservationId: {}, PassengerCount: {}",
                 res.getReservationId(), passengerList.size());
 
-        flightClient.updateSeats(bookingReq.getScheduleId(), bookingReq.getNoOfSeats());
+        flightClient.updateSeatsForDate(
+            bookingReq.getScheduleId(),
+            bookingReq.getJourneyDate(),
+            bookingReq.getNoOfSeats()
+        );
 
         log.info("Flight seats updated successfully. ScheduleId: {}, SeatsBooked: {}",
                 bookingReq.getScheduleId(), bookingReq.getNoOfSeats());
@@ -485,6 +493,57 @@ public class BookingService {
         }
 
         return myBookings;
+    }
+
+    // 🔥 CANCEL BOOKING
+    @Transactional
+    public void cancelBooking(String reservationId) {
+        
+        log.info("Starting cancellation process for reservationId: {}", reservationId);
+        
+        // Find the reservation
+        Reservation reservation = reservationRepo.findById(reservationId)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+        
+        log.info("Reservation found. UserId: {}, ScheduleId: {}, Fare: {}", 
+                reservation.getUserId(), reservation.getScheduleId(), reservation.getTotalFare());
+        
+        // Check if already cancelled
+        if (reservation.getBookingStatus() == 0) {
+            log.warn("Reservation already cancelled. ReservationId: {}", reservationId);
+            throw new RuntimeException("Booking already cancelled");
+        }
+        
+        // Update reservation status to cancelled (0)
+        reservation.setBookingStatus(0);
+        reservationRepo.save(reservation);
+        log.info("Reservation status updated to cancelled");
+        
+        // Release seats back to the flight
+        try {
+                flightClient.releaseSeatForDate(
+                    reservation.getScheduleId(),
+                    reservation.getJourneyDate(),
+                    reservation.getNoOfSeats()
+                );
+            log.info("Seats released successfully. ScheduleId: {}, Seats: {}", 
+                    reservation.getScheduleId(), reservation.getNoOfSeats());
+        } catch (Exception e) {
+            log.error("Failed to release seats for scheduleId: {}", reservation.getScheduleId(), e);
+            throw new RuntimeException("Failed to release seats: " + e.getMessage());
+        }
+        
+        // Process refund to wallet
+        try {
+            userClient.refundMoney(reservation.getUserId(), reservation.getTotalFare());
+            log.info("Refund added to wallet successfully. UserId: {}, Amount: {}", 
+                    reservation.getUserId(), reservation.getTotalFare());
+        } catch (Exception e) {
+            log.error("Failed to add refund to wallet for userId: {}", reservation.getUserId(), e);
+            throw new RuntimeException("Failed to process refund: " + e.getMessage());
+        }
+        
+        log.info("Booking cancellation completed successfully for reservationId: {}", reservationId);
     }
 
 }
