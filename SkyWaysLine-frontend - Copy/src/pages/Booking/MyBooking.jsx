@@ -216,7 +216,7 @@ const MyBooking = () => {
               <button
                 className="bc-btn bc-btn-primary"
                 style={{ margin: "24px auto 0", display: "inline-flex" }}
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/home")}
               >
                 ✈ Explore Flights
               </button>

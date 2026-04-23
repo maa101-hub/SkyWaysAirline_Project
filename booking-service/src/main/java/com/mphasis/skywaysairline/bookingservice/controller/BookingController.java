@@ -3,8 +3,11 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -13,7 +16,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.mphasis.skywaysairline.bookingservice.dto.BookingRequest;
 import com.mphasis.skywaysairline.bookingservice.dto.FlightResponse;
@@ -25,6 +31,7 @@ import com.mphasis.skywaysairline.bookingservice.dto.WalletVerifyRequest;
 import com.mphasis.skywaysairline.bookingservice.models.Reservation;
 import com.mphasis.skywaysairline.bookingservice.response.ApiResponse;
 import com.mphasis.skywaysairline.bookingservice.service.BookingService;
+import com.mphasis.skywaysairline.bookingservice.service.EmailService;
 
 import jakarta.validation.Valid;
 
@@ -37,6 +44,7 @@ public class BookingController {
 
     @Autowired
     private BookingService service;
+    @Autowired EmailService emailService;
 
     // 🔹 CREATE PAYMENT ORDER
     @PostMapping("/create-order")
@@ -159,6 +167,32 @@ public class BookingController {
     public List<MyBookingDetails> getMyBookings(@PathVariable String userId) {
         return service.getFlightDetails(userId);
     }
+    
+    @PostMapping(
+            value = "/send-boarding-pass",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<String> sendBoardingPass(
+            @RequestParam("email") String email,
+            @RequestPart("boardingPass") MultipartFile boardingPass
+    ) {
+        log.info("Sending boarding pass email to: {}", email);
+
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body("Email is required");
+        }
+
+        if (boardingPass == null || boardingPass.isEmpty()) {
+            return ResponseEntity.badRequest().body("Boarding pass file is required");
+        }
+
+        emailService.sendBoardingPass(email, boardingPass);
+
+        return ResponseEntity.ok("Boarding pass sent successfully");
+    }
+
+
+
 
     // 🔥 CANCEL BOOKING
     @DeleteMapping("/cancel/{reservationId}")
