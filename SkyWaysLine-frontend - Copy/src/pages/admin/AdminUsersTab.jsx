@@ -112,10 +112,14 @@ export default function AdminUsersTab({
         )}
       </div>
 
-      <div className="stats-row">
+      <div className="stats-row users-stats-row">
         <div className="stat-card">
           <p className="stat-num">{customerUsers.length}</p>
-          <p className="stat-label">Total Users</p>
+          <p className="stat-label">Total Registered Users</p>
+        </div>
+        <div className="stat-card">
+          <p className="stat-num warn-num">{deletedUsers.length}</p>
+          <p className="stat-label">Total Deleted Users</p>
         </div>
         <div className="stat-card">
           <p className="stat-num active-num">{activeUsers.length}</p>

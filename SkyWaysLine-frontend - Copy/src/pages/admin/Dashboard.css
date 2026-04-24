@@ -124,6 +124,9 @@
   display: grid; grid-template-columns: repeat(3, 1fr);
   gap: 16px; margin-bottom: 28px;
 }
+.users-stats-row {
+  grid-template-columns: repeat(4, 1fr);
+}
 .stat-card {
   background: var(--card); border: 1px solid var(--border);
   border-radius: 16px; padding: 20px 24px; text-align: center;
@@ -1450,6 +1453,7 @@
   .dash-main { margin-left: 68px; padding: 80px 20px 40px; }
   .dash-topbar { left: 68px; }
   .stats-row { grid-template-columns: 1fr; }
+  .users-stats-row { grid-template-columns: 1fr; }
   .overview-cards { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
