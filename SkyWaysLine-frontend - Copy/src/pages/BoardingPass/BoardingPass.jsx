@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
 import './BoardingPass.css';
@@ -282,9 +282,11 @@ export default function BoardingPass() {
   const location = useLocation();
   const navigate = useNavigate();
   const printRef = useRef(null);
+  const hasAutoEmailedRef = useRef(false);
+  const [isEmailing, setIsEmailing] = useState(false);
   const state = location.state || {};
 
-  const boardings = Array.isArray(state) ? state : [{
+  const boardings = Array.isArray(state) ? state : Array.isArray(state.boardings) ? state.boardings : [{
     flightNumber: state.flightNumber || 'SW-411',
     passengerName: state.passengerName || 'Guest',
     fromCode: state.fromCode || 'DXB',
@@ -302,17 +304,44 @@ export default function BoardingPass() {
     classType: state.classType || 'Economy',
     reservationId: state.reservationId || '90221002299KUIL',
     amountPaid: state.amountPaid || 0,
+    email: state.email || state.userEmail || state.passengerEmail || '',
     qrSeed: state.qrSeed || 42,
   }];
+
+  const getBoardingPassFileName = () => {
+    const firstBoarding = boardings[0];
+    return `SkyWays_BoardingPass_${firstBoarding.reservationId}_${boardings.length}_passengers.pdf`;
+  };
+
+  const getPassengerEmail = () => {
+    const firstBoarding = boardings[0] || {};
+    return firstBoarding.email || firstBoarding.userEmail || firstBoarding.passengerEmail || state.email || state.userEmail || state.passengerEmail || '';
+  };
+
+  const createBoardingPassPdfBlob = async () => {
+    const element = printRef.current;
+    if (!element) {
+      throw new Error('Boarding pass is not ready.');
+    }
+
+    const options = {
+      margin: 0.5,
+      filename: getBoardingPassFileName(),
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    return html2pdf().set(options).from(element).outputPdf('blob');
+  };
 
   const handleDownloadPdf = () => {
     const element = printRef.current;
     if (!element) return;
 
-    const firstBoarding = boardings[0];
     const options = {
       margin: 0.5,
-      filename: `SkyWays_BoardingPass_${firstBoarding.reservationId}_${boardings.length}_passengers.pdf`,
+      filename: getBoardingPassFileName(),
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
@@ -320,6 +349,53 @@ export default function BoardingPass() {
 
     html2pdf().set(options).from(element).save();
   };
+
+  const handleEmailBoardingPass = async () => {
+    const email = getPassengerEmail() || window.prompt('Enter passenger email address:');
+    if (!email) return;
+
+    setIsEmailing(true);
+
+    try {
+      const pdfBlob = await createBoardingPassPdfBlob();
+      const formData = new FormData();
+      console.log('Emailing boarding pass to:', email);
+      formData.append('email', email);
+      formData.append('boardingPass', pdfBlob, getBoardingPassFileName());
+
+      const response = await fetch('http://localhost:8090/api/booking/send-boarding-pass', {
+  method: 'POST',
+  body: formData,
+});
+
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || 'Failed to send boarding pass email.');
+      }
+
+      alert('Boarding pass sent successfully.');
+    } catch (error) {
+      console.error('Email boarding pass failed', error);
+      alert(error.message || 'Failed to send boarding pass email.');
+    } finally {
+      setIsEmailing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!state.autoEmail || hasAutoEmailedRef.current) return;
+
+    const email = getPassengerEmail();
+    if (!email || !printRef.current) return;
+
+    hasAutoEmailedRef.current = true;
+    const timer = setTimeout(() => {
+      handleEmailBoardingPass();
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [state.autoEmail]);
 
   const handleShare = async () => {
     const firstBoarding = boardings[0];
@@ -368,6 +444,9 @@ export default function BoardingPass() {
       </button>
       <div className="bp-actions">
         <button className="btn-download" onClick={handleDownloadPdf}>Download PDF</button>
+        <button className="btn-download" onClick={handleEmailBoardingPass} disabled={isEmailing}>
+          {isEmailing ? 'Sending...' : 'Email Boarding Pass'}
+        </button>
         <button className="btn-share" onClick={handleShare}>Share Boarding Pass</button>
       </div>
 

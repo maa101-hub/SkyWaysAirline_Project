@@ -53,6 +53,15 @@ export default function BookNow() {
   const totalFare = fareCalculation(passengers.length, price);
   const today     = new Date().toISOString().split("T")[0];
   const walletHasFunds = walletBalance >= totalFare;
+  const userEmail =
+    profile?.email ||
+    profile?.userEmail ||
+    profile?.emailId ||
+    profile?.user?.email ||
+    profile?.data?.email ||
+    flightData.email ||
+    flightData.userEmail ||
+    "";
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -294,8 +303,10 @@ export default function BookNow() {
     classType:     flightData.cabinClass || "Economy",
     reservationId: ticket?.reservationId || autoReservationId,
     amountPaid:    Number(ticket?.totalFare || totalFare),
+    email:         userEmail,
     qrSeed:        Number(ticket?.reservationId?.slice(-6)) || 42 + index,
   }));
+
   // Step validation
   const step0Valid = reservation.reservationType && reservation.journeyDate;
   const step1Valid = passengers.every((p) => p.name && p.gender && p.age);
@@ -873,7 +884,13 @@ export default function BookNow() {
             <div className="confirm-actions">
               <AnimBtn
                 className="btn-boarding"
-                onClick={() => navigate("/boarding-pass", { state: boardingPassPayload })}
+                onClick={() => navigate("/boarding-pass", {
+                  state: {
+                    boardings: boardingPassPayload,
+                    autoEmail: false,
+                    email: userEmail,
+                  },
+                })}
                 style={{ width:"100%" }}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
